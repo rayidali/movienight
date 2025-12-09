@@ -49,7 +49,7 @@ export function MovieCard({ movie, userAvatarUrl }: MovieCardProps) {
         <CardTitle>{movie.title}</CardTitle>
         <CardDescription>{movie.year}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-grow flex items-center justify-center p-6 pt-0">
         <Image
           src={movie.posterUrl}
           alt={`Poster for ${movie.title}`}
