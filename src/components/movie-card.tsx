@@ -46,10 +46,10 @@ export function MovieCard({ movie, userAvatarUrl }: MovieCardProps) {
             </Avatar>
             <p className="font-bold text-sm">Added by {movie.addedBy}</p>
         </div>
-        <CardTitle className="font-headline text-2xl">{movie.title}</CardTitle>
-        <CardDescription className="font-bold">{movie.year}</CardDescription>
+        <CardTitle>{movie.title}</CardTitle>
+        <CardDescription>{movie.year}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         <Image
           src={movie.posterUrl}
           alt={`Poster for ${movie.title}`}
