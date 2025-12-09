@@ -1,55 +1,96 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Movie, SearchResult, User } from "@/lib/types";
+import type { Movie, SearchResult, User, TMDBSearchResult } from "@/lib/types";
+
+// --- TMDB API ---
+// IMPORTANT: It's recommended to move these credentials to a .env.local file
+const TMDB_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1Njg3YWIyOWI1NjA0MzJmOGFlZTAzZWI2Y2M0ZWEyMyIsIm5iZiI6MTc2NTI0NjA1Ni4zNjA5OTk4LCJzdWIiOiI2OTM3ODQ2ODQ5NTE4MDgyOWIzY2U1ZjEiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.A6R5ATQP0m-pC1lMXTLsIRXMz2AouhRCxxfgz6Rs9PM';
+const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
+
+async function tmdbFetch(path: string, params: Record<string, string> = {}) {
+    const url = new URL(`${TMDB_API_BASE_URL}/${path}`);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, value));
+
+    const options = {
+        method: 'GET',
+        headers: {
+            accept: 'application/json',
+            Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`
+        }
+    };
+
+    try {
+        const response = await fetch(url.toString(), options);
+        if (!response.ok) {
+            console.error(`TMDB API Error: ${response.status} ${response.statusText}`);
+            const errorBody = await response.text();
+            console.error("Error Body:", errorBody);
+            return null;
+        }
+        return response.json();
+    } catch (error) {
+        console.error("Failed to fetch from TMDB:", error);
+        return null;
+    }
+}
+
+function formatTMDBSearchResult(result: TMDBSearchResult): SearchResult {
+    const year = result.release_date ? result.release_date.split('-')[0] : 'N/A';
+    return {
+        id: result.id.toString(),
+        title: result.title,
+        year: year,
+        posterUrl: result.poster_path 
+            ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
+            : 'https://picsum.photos/seed/placeholder/500/750', // Fallback
+        posterHint: 'movie poster'
+    };
+}
+
 
 // --- MOCK DATABASE ---
 
 let movies: Movie[] = [
     {
-        id: '1',
-        title: 'Pulp Fiction',
+        id: '278', // The Shawshank Redemption
+        title: 'The Shawshank Redemption',
         year: '1994',
-        posterUrl: 'https://picsum.photos/seed/pulp/500/750',
+        posterUrl: 'https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqEE.jpg',
         posterHint: 'movie poster',
         addedBy: 'User A',
         status: 'To Watch',
-        socialLink: 'https://www.tiktok.com/tag/pulpfiction'
+        socialLink: 'https://www.tiktok.com/tag/shawshankredemption'
     },
     {
-        id: '2',
-        title: 'The Grand Budapest Hotel',
-        year: '2014',
-        posterUrl: 'https://picsum.photos/seed/budapest/500/750',
+        id: '238', // The Godfather
+        title: 'The Godfather',
+        year: '1972',
+        posterUrl: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg',
         posterHint: 'movie poster',
         addedBy: 'User B',
         status: 'To Watch',
     },
     {
-        id: '3',
-        title: 'Inception',
-        year: '2010',
-        posterUrl: 'https://picsum.photos/seed/inception/500/750',
+        id: '240', // The Godfather Part II
+        title: 'The Godfather Part II',
+        year: '1974',
+        posterUrl: 'https://image.tmdb.org/t/p/w500/hek3koDUyRQk7FIhPXsa6mT2Zc3.jpg',
         posterHint: 'movie poster',
         addedBy: 'User A',
         status: 'Watched',
     },
     {
-        id: '4',
+        id: '496243', // Parasite
         title: 'Parasite',
         year: '2019',
-        posterUrl: 'https://picsum.photos/seed/parasite/500/750',
+        posterUrl: 'https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
         posterHint: 'movie poster',
         addedBy: 'User B',
         status: 'Watched',
         socialLink: 'https://www.instagram.com/explore/tags/parasitemovie/'
     },
-];
-
-let searchResults: SearchResult[] = [
-    { id: '101', title: 'Star Wars: A New Hope', year: '1977', posterUrl: 'https://picsum.photos/seed/starwars4/500/750', posterHint: 'movie poster' },
-    { id: '102', title: 'The Empire Strikes Back', year: '1980', posterUrl: 'https://picsum.photos/seed/starwars5/500/750', posterHint: 'movie poster' },
-    { id: '103', title: 'Return of the Jedi', year: '1983', posterUrl: 'https://picsum.photos/seed/starwars6/500/750', posterHint: 'movie poster' },
 ];
 
 // --- SERVER ACTIONS ---
@@ -61,12 +102,14 @@ export async function getMovies(): Promise<Movie[]> {
 
 export async function searchMovies(query: string): Promise<SearchResult[]> {
   if (!query) return [];
-  // In a real app, this would call the TMDB API.
-  // Here, we just filter our mock results.
-  const filteredResults = searchResults.filter(movie => 
-    movie.title.toLowerCase().includes(query.toLowerCase())
-  );
-  return Promise.resolve(filteredResults.length > 0 ? filteredResults : searchResults);
+  
+  const data = await tmdbFetch('search/movie', { query: query, include_adult: 'false', language: 'en-US', page: '1' });
+
+  if (data && data.results) {
+      return data.results.slice(0, 10).map(formatTMDBSearchResult);
+  }
+
+  return [];
 }
 
 export async function addMovie(formData: FormData) {
