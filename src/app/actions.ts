@@ -57,7 +57,7 @@ let movies: Movie[] = [
         id: '272', // Batman Begins
         title: 'Batman Begins',
         year: '2005',
-        posterUrl: 'https://image.tmdb.org/t/p/w500/tGc63lM09n25d0nZEPYjDaI1x0U.jpg',
+        posterUrl: 'https://image.tmdb.org/t/p/w500/sPX89Td70IDDjVr85jdSBb4rWGr.jpg',
         posterHint: 'movie poster',
         addedBy: 'User A',
         status: 'To Watch',
