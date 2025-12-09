@@ -9,7 +9,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-background font-body text-foreground">
       <div className="container mx-auto p-4 md:p-8">
-        <header className="mb-8 flex flex-col items-center">
+        <header className="mb-12 flex flex-col items-center">
           <div className="flex items-center gap-4 mb-6">
             <Film className="h-10 w-10 md:h-12 md:w-12 text-primary" />
             <h1 className="text-4xl md:text-6xl font-headline font-bold text-center tracking-tighter">
@@ -19,7 +19,9 @@ export default async function Home() {
           <p className="max-w-2xl text-center text-muted-foreground mb-8">
             A shared movie watchlist for you and a friend. Search for a movie, add a social link, and keep track of what to watch and what you've watched.
           </p>
-          <AddMovieForm />
+          <div className="w-full max-w-2xl mb-8">
+            <AddMovieForm />
+          </div>
         </header>
 
         <MovieList initialMovies={movies} />
