@@ -19,7 +19,7 @@ export default async function Home() {
           <p className="max-w-2xl text-center text-muted-foreground mb-8">
             A shared movie watchlist for you and a friend. Search for a movie, add a social link, and keep track of what to watch and what you've watched.
           </p>
-          <div className="w-full max-w-2xl mb-8">
+          <div className="w-full max-w-2xl">
             <AddMovieForm />
           </div>
         </header>
