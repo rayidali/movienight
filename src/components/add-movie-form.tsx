@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Search, Loader2, Plus } from "lucide-react";
 import Image from "next/image";
 
@@ -10,7 +10,7 @@ import { addMovie, searchMovies } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 const retroInputClass = "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] focus:shadow-[2px_2px_0px_0px_#000] focus:translate-x-0.5 focus:translate-y-0.5 transition-all duration-200";
@@ -27,15 +27,25 @@ export function AddMovieForm() {
 
   const { toast } = useToast();
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query) return;
+  useEffect(() => {
+    // Don't search if the query is empty or a movie is already selected
+    if (!query.trim() || selectedMovie) {
+      setResults([]);
+      return;
+    }
 
-    startSearchTransition(async () => {
-      const searchResults = await searchMovies(query);
-      setResults(searchResults);
-    });
-  };
+    // Set a timer to wait 300ms after the user stops typing
+    const searchTimer = setTimeout(() => {
+      startSearchTransition(async () => {
+        const searchResults = await searchMovies(query);
+        // Only update results if the query hasn't changed (to avoid race conditions)
+        setResults(searchResults);
+      });
+    }, 300); // 300ms debounce delay
+
+    // Clear the timer if the user types again before the 300ms is up
+    return () => clearTimeout(searchTimer);
+  }, [query, selectedMovie]); // Re-run this effect when the query or selectedMovie changes
   
   const handleSelectMovie = (movie: SearchResult) => {
     setSelectedMovie(movie);
@@ -76,18 +86,20 @@ export function AddMovieForm() {
       <CardContent>
         {!selectedMovie ? (
           <div className="space-y-4">
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Search for a movie (e.g., Star Wars)..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className={retroInputClass}
-                disabled={isSearching}
-              />
-              <Button type="submit" size="icon" className={retroButtonClass} disabled={isSearching || !query}>
-                {isSearching ? <Loader2 className="animate-spin" /> : <Search />}
-              </Button>
+            <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
+              <div className="relative w-full">
+                <Input
+                  type="text"
+                  placeholder="Search for a movie (e.g., Star Wars)..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className={`${retroInputClass} pr-10`}
+                  disabled={isAdding}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  {isSearching ? <Loader2 className="animate-spin text-muted-foreground" /> : <Search className="text-muted-foreground"/>}
+                </div>
+              </div>
             </form>
             {results.length > 0 && (
               <div className="space-y-2 max-h-60 overflow-y-auto p-2 bg-background rounded-lg border-[3px] border-black">
