@@ -4,14 +4,88 @@ import { useState, useTransition, useEffect } from "react";
 import { Search, Loader2, Plus } from "lucide-react";
 import Image from "next/image";
 
-import type { SearchResult } from "@/lib/types";
-import { addMovie, searchMovies } from "@/app/actions";
+import type { SearchResult, TMDBSearchResult } from "@/lib/types";
+import { addMovie } from "@/app/actions";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/firebase";
+
+const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
+
+async function tmdbFetch(path: string, params: Record<string, string> = {}) {
+  const TMDB_ACCESS_TOKEN = process.env.NEXT_PUBLIC_TMDB_ACCESS_TOKEN;
+  if (!TMDB_ACCESS_TOKEN) {
+    // This will now properly throw on the client/server where it's called.
+    throw new Error('TMDB Access Token is not configured.');
+  }
+
+  const url = new URL(`${TMDB_API_BASE_URL}/${path}`);
+  Object.entries(params).forEach(([key, value]) =>
+    url.searchParams.append(key, value)
+  );
+
+  const options = {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+    },
+  };
+
+  try {
+    const response = await fetch(url.toString(), options);
+    if (!response.ok) {
+      console.error(
+        `TMDB API Error: ${response.status} ${response.statusText}`
+      );
+      const errorBody = await response.text();
+      console.error('Error Body:', errorBody);
+      return null;
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Failed to fetch from TMDB:', error);
+    return null;
+  }
+}
+
+function formatTMDBSearchResult(result: TMDBSearchResult): SearchResult {
+  const year = result.release_date ? result.release_date.split('-')[0] : 'N/A';
+  return {
+    id: result.id.toString(),
+    title: result.title,
+    year: year,
+    posterUrl: result.poster_path
+      ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
+      : 'https://picsum.photos/seed/placeholder/500/750', // Fallback
+    posterHint: 'movie poster',
+  };
+}
+
+
+/**
+ * Searches for movies on TMDB.
+ */
+export async function searchMovies(query: string): Promise<SearchResult[]> {
+  if (!query) return [];
+
+  const data = await tmdbFetch('search/movie', {
+    query: query,
+    include_adult: 'false',
+    language: 'en-US',
+    page: '1',
+  });
+
+  if (data && data.results) {
+    return data.results.slice(0, 10).map(formatTMDBSearchResult);
+  }
+
+  return [];
+}
+
 
 const retroInputClass = "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] focus:shadow-[2px_2px_0px_0px_#000] focus:translate-x-0.5 focus:translate-y-0.5 transition-all duration-200";
 const retroButtonClass = "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all duration-200";
