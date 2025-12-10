@@ -17,22 +17,27 @@ import { useUser } from "@/firebase";
 const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 
 async function tmdbFetch(path: string, params: Record<string, string> = {}) {
-    const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-
-    if (!apiKey) {
-        console.error('TMDB API key is missing. Check NEXT_PUBLIC_TMDB_API_KEY in .env.local');
+    const accessToken = process.env.NEXT_PUBLIC_TMDB_ACCESS_TOKEN;
+    if (!accessToken) {
+        console.error('TMDB Access Token is not configured. Check NEXT_PUBLIC_TMDB_ACCESS_TOKEN in .env.local');
         return null;
     }
 
     const url = new URL(`${TMDB_API_BASE_URL}/${path}`);
-    url.searchParams.set('api_key', apiKey);
-
     for (const [key, value] of Object.entries(params)) {
         url.searchParams.set(key, value);
     }
     
+    const options = {
+        method: 'GET',
+        headers: {
+            accept: 'application/json',
+            Authorization: `Bearer ${accessToken}`
+        }
+    };
+
     try {
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), options);
         if (!response.ok) {
         console.error(
             `TMDB API Error: ${response.status} ${response.statusText}`
