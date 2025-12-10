@@ -1,5 +1,5 @@
-
-export type User = 'User A' | 'User B';
+// This now represents the User's UID from Firebase Auth
+export type User = string;
 
 export type Movie = {
   id: string;

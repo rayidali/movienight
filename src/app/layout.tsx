@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${spaceGrotesk.variable} ${spaceMono.variable} font-body antialiased`}>
-        {children}
+        <FirebaseClientProvider>
+          {children}
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>

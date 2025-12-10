@@ -4,20 +4,20 @@ import { useState, useTransition, useEffect } from "react";
 import { Search, Loader2, Plus } from "lucide-react";
 import Image from "next/image";
 
-import type { SearchResult, User } from "@/lib/types";
+import type { SearchResult } from "@/lib/types";
 import { addMovie, searchMovies } from "@/app/actions";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/firebase";
 
 const retroInputClass = "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] focus:shadow-[2px_2px_0px_0px_#000] focus:translate-x-0.5 focus:translate-y-0.5 transition-all duration-200";
 const retroButtonClass = "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all duration-200";
 
 export function AddMovieForm() {
-  const [currentUser, setCurrentUser] = useState<User>('User A');
+  const { user } = useUser();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
@@ -54,10 +54,11 @@ export function AddMovieForm() {
   };
 
   const handleAddMovie = async (formData: FormData) => {
-    if (!selectedMovie) return;
+    if (!selectedMovie || !user) return;
     
     formData.append("movieData", JSON.stringify(selectedMovie));
-    formData.append("addedBy", currentUser);
+    // Pass the user's UID instead of 'User A' or 'User B'
+    formData.append("addedBy", user.uid);
 
     startAddingTransition(async () => {
       await addMovie(formData);
@@ -73,15 +74,6 @@ export function AddMovieForm() {
     <Card className="w-full max-w-2xl bg-secondary rounded-xl border-[3px] border-black shadow-[8px_8px_0px_0px_#000]">
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Add a New Film</CardTitle>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-4">
-            <span className="font-bold text-sm">CURRENT USER:</span>
-            <Tabs value={currentUser} onValueChange={(value) => setCurrentUser(value as User)} className="w-full sm:w-auto">
-                <TabsList className="grid w-full grid-cols-2 bg-background border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] p-0 h-auto">
-                    <TabsTrigger value="User A" className="rounded-l-md data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none border-r-[3px] border-black">User A</TabsTrigger>
-                    <TabsTrigger value="User B" className="rounded-r-md data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none">User B</TabsTrigger>
-                </TabsList>
-            </Tabs>
-        </div>
       </CardHeader>
       <CardContent>
         {!selectedMovie ? (
