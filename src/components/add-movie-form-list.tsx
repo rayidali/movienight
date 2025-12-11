@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { Search, Loader2, Plus } from 'lucide-react';
+import { Search, Loader2, Plus, Instagram, Youtube } from 'lucide-react';
 import Image from 'next/image';
+import { TiktokIcon } from './icons';
+import { parseVideoUrl, getProviderDisplayName } from '@/lib/video-utils';
 
 import type { SearchResult, TMDBSearchResult } from '@/lib/types';
 import { addMovieToList } from '@/app/actions';
@@ -92,11 +94,15 @@ export function AddMovieFormForList({ listId }: AddMovieFormForListProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
+  const [socialLink, setSocialLink] = useState('');
 
   const [isSearching, startSearchTransition] = useTransition();
   const [isAdding, startAddingTransition] = useTransition();
 
   const { toast } = useToast();
+
+  // Parse the social link to show provider icon
+  const parsedVideo = parseVideoUrl(socialLink);
 
   useEffect(() => {
     if (!query.trim() || selectedMovie) {
@@ -126,6 +132,9 @@ export function AddMovieFormForList({ listId }: AddMovieFormForListProps) {
     formData.append('movieData', JSON.stringify(selectedMovie));
     formData.append('userId', user.uid);
     formData.append('listId', listId);
+    if (socialLink) {
+      formData.set('socialLink', socialLink);
+    }
 
     startAddingTransition(async () => {
       const result = await addMovieToList(formData);
@@ -142,7 +151,22 @@ export function AddMovieFormForList({ listId }: AddMovieFormForListProps) {
         });
       }
       setSelectedMovie(null);
+      setSocialLink('');
     });
+  };
+
+  const getProviderIcon = () => {
+    if (!parsedVideo || !parsedVideo.provider) return null;
+    switch (parsedVideo.provider) {
+      case 'tiktok':
+        return <TiktokIcon className="h-4 w-4 text-primary" />;
+      case 'instagram':
+        return <Instagram className="h-4 w-4 text-primary" />;
+      case 'youtube':
+        return <Youtube className="h-4 w-4 text-primary" />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -211,16 +235,39 @@ export function AddMovieFormForList({ listId }: AddMovieFormForListProps) {
               <div className="flex-grow">
                 <h3 className="text-xl font-bold font-headline">{selectedMovie.title}</h3>
                 <p className="text-muted-foreground">{selectedMovie.year}</p>
-                <Input
-                  type="url"
-                  name="socialLink"
-                  placeholder="TikTok or Instagram link (optional)"
-                  className={`mt-4 ${retroInputClass}`}
-                />
+                <div className="mt-4 space-y-2">
+                  <div className="relative">
+                    <Input
+                      type="url"
+                      name="socialLink"
+                      value={socialLink}
+                      onChange={(e) => setSocialLink(e.target.value)}
+                      placeholder="TikTok, Instagram, or YouTube link (optional)"
+                      className={`${retroInputClass} ${parsedVideo?.provider ? 'pr-10' : ''}`}
+                    />
+                    {parsedVideo?.provider && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        {getProviderIcon()}
+                      </div>
+                    )}
+                  </div>
+                  {parsedVideo?.provider && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      {getProviderIcon()}
+                      <span>{getProviderDisplayName(parsedVideo.provider)} video detected - will embed in card</span>
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <TiktokIcon className="h-3 w-3" />
+                    <Instagram className="h-3 w-3" />
+                    <Youtube className="h-3 w-3" />
+                    <span>Supported platforms</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setSelectedMovie(null)} className="font-bold">
+              <Button variant="ghost" onClick={() => { setSelectedMovie(null); setSocialLink(''); }} className="font-bold">
                 Cancel
               </Button>
               <Button type="submit" className={retroButtonClass} disabled={isAdding}>
