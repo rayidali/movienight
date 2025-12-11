@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Film, Plus, Loader2, List, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { UserAvatar } from '@/components/user-avatar';
@@ -252,53 +251,53 @@ export default function ListsPage() {
                 <Card
                   key={list.id}
                   className="border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] hover:shadow-[2px_2px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-200 cursor-pointer group"
+                  onClick={() => router.push(`/lists/${list.id}`)}
                 >
-                  <Link href={`/lists/${list.id}`} className="block">
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2">
-                          <List className="h-5 w-5 text-primary" />
-                          <CardTitle className="text-lg">{list.name}</CardTitle>
-                          {list.isDefault && (
-                            <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="border-[2px] border-black">
-                            <DropdownMenuItem onSelect={() => openRenameDialog(list)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Rename
-                            </DropdownMenuItem>
-                            {!list.isDefault && (
-                              <DropdownMenuItem
-                                onSelect={() => openDeleteDialog(list)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <List className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg">{list.name}</CardTitle>
+                        {list.isDefault && (
+                          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                            Default
+                          </span>
+                        )}
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription>
-                        Click to view and manage movies
-                      </CardDescription>
-                    </CardContent>
-                  </Link>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="border-[2px] border-black">
+                          <DropdownMenuItem onSelect={() => openRenameDialog(list)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                          {!list.isDefault && (
+                            <DropdownMenuItem
+                              onSelect={() => openDeleteDialog(list)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription>
+                      Click to view and manage movies
+                    </CardDescription>
+                  </CardContent>
                 </Card>
               ))}
             </div>
