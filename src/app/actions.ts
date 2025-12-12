@@ -65,9 +65,12 @@ export async function createUserProfile(userId: string, email: string, displayNa
     await userRef.set({
       uid: userId,
       email: email,
+      emailLower: email.toLowerCase(),
       displayName: displayName,
+      displayNameLower: displayName?.toLowerCase() || null,
       photoURL: null,
       username: username,
+      usernameLower: username.toLowerCase(),
       followersCount: 0,
       followingCount: 0,
       createdAt: FieldValue.serverTimestamp(),
@@ -110,13 +113,23 @@ export async function ensureUserProfile(userId: string, email: string, displayNa
 
     // Check if user needs social fields migration
     const userData = userDoc.data();
-    if (userData && (userData.username === undefined || userData.followersCount === undefined)) {
-      const username = userData.username || await generateUniqueUsername(db, email, displayName);
+    const needsMigration = userData && (
+      userData.username === undefined ||
+      userData.usernameLower === undefined ||
+      userData.followersCount === undefined
+    );
+
+    if (needsMigration) {
+      const username = userData?.username || await generateUniqueUsername(db, email, displayName);
       await userRef.update({
         username: username,
-        followersCount: userData.followersCount ?? 0,
-        followingCount: userData.followingCount ?? 0,
+        usernameLower: username.toLowerCase(),
+        emailLower: (userData?.email || email).toLowerCase(),
+        displayNameLower: (userData?.displayName || displayName)?.toLowerCase() || null,
+        followersCount: userData?.followersCount ?? 0,
+        followingCount: userData?.followingCount ?? 0,
       });
+      console.log(`[ensureUserProfile] Migrated user ${userId} with username: ${username}`);
     }
 
     // Check if user has any lists
@@ -404,7 +417,7 @@ export async function migrateMoviesToList(userId: string, listId: string) {
 
 /**
  * Search for users by username, email, or display name.
- * More robust search that handles various edge cases.
+ * Uses a simple but reliable approach - fetches users and filters.
  */
 export async function searchUsers(query: string, currentUserId: string) {
   const db = getDb();
@@ -417,71 +430,71 @@ export async function searchUsers(query: string, currentUserId: string) {
     const queryLower = query.toLowerCase().trim();
     const usersMap = new Map<string, UserProfile>();
 
-    // Search by username (prefix match) - only if username field exists
-    try {
-      const usernameResults = await db.collection('users')
-        .where('username', '>=', queryLower)
-        .where('username', '<=', queryLower + '\uf8ff')
-        .limit(10)
-        .get();
+    // Fetch all users and filter client-side
+    // For apps with <1000 users, this is pragmatic and reliable
+    const allUsersSnapshot = await db.collection('users').get();
 
-      usernameResults.docs.forEach((doc) => {
-        const data = doc.data() as UserProfile;
-        if (data.uid !== currentUserId) {
-          usersMap.set(data.uid, data);
-        }
-      });
-    } catch (e) {
-      console.log('Username search failed (may need index):', e);
-    }
+    console.log(`[searchUsers] Query: "${queryLower}", Total users in DB: ${allUsersSnapshot.size}, CurrentUserId: ${currentUserId}`);
 
-    // Search by email (prefix match)
-    try {
-      const emailResults = await db.collection('users')
-        .where('email', '>=', queryLower)
-        .where('email', '<=', queryLower + '\uf8ff')
-        .limit(10)
-        .get();
+    allUsersSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
 
-      emailResults.docs.forEach((doc) => {
-        const data = doc.data() as UserProfile;
-        if (data.uid !== currentUserId && !usersMap.has(data.uid)) {
-          usersMap.set(data.uid, data);
-        }
-      });
-    } catch (e) {
-      console.log('Email search failed (may need index):', e);
-    }
+      // Skip current user
+      const docUid = data.uid || doc.id;
+      if (docUid === currentUserId) return;
 
-    // Fallback: Get all users and filter client-side if no results
-    // This is less efficient but ensures we find users even without indexes
-    if (usersMap.size === 0) {
-      const allUsersSnapshot = await db.collection('users').limit(50).get();
+      // Use pre-normalized fields if available, otherwise normalize on the fly
+      const username = data.usernameLower || (data.username || '').toLowerCase();
+      const email = data.emailLower || (data.email || '').toLowerCase();
+      const displayName = data.displayNameLower || (data.displayName || '').toLowerCase();
 
-      allUsersSnapshot.docs.forEach((doc) => {
-        const data = doc.data() as UserProfile;
-        if (data.uid === currentUserId) return;
+      // Check if any field contains or starts with the query
+      const matchesUsername = username && (username.includes(queryLower) || username.startsWith(queryLower));
+      const matchesEmail = email && (email.includes(queryLower) || email.split('@')[0].includes(queryLower));
+      const matchesDisplayName = displayName && displayName.includes(queryLower);
 
-        const username = (data.username || '').toLowerCase();
-        const email = (data.email || '').toLowerCase();
-        const displayName = (data.displayName || '').toLowerCase();
+      // Debug logging for each user
+      console.log(`[searchUsers] Checking user ${docUid}: username="${data.username}", email="${data.email?.split('@')[0]}...", matches: u=${matchesUsername}, e=${matchesEmail}, d=${matchesDisplayName}`);
 
-        if (
-          username.includes(queryLower) ||
-          email.includes(queryLower) ||
-          displayName.includes(queryLower)
-        ) {
-          usersMap.set(data.uid, data);
-        }
-      });
-    }
+      if (matchesUsername || matchesEmail || matchesDisplayName) {
+        const userProfile: UserProfile = {
+          uid: docUid,
+          email: data.email || '',
+          displayName: data.displayName || null,
+          photoURL: data.photoURL || null,
+          username: data.username || null,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          followersCount: data.followersCount || 0,
+          followingCount: data.followingCount || 0,
+        };
+        usersMap.set(docUid, userProfile);
+      }
+    });
 
-    const users = Array.from(usersMap.values()).slice(0, 10);
+    console.log(`[searchUsers] Found ${usersMap.size} matching users`);
+
+    // Sort by relevance: exact username match first, then prefix match, then contains
+    const users = Array.from(usersMap.values())
+      .sort((a, b) => {
+        const aUsername = (a.username || '').toLowerCase();
+        const bUsername = (b.username || '').toLowerCase();
+
+        // Exact match comes first
+        if (aUsername === queryLower && bUsername !== queryLower) return -1;
+        if (bUsername === queryLower && aUsername !== queryLower) return 1;
+
+        // Prefix match comes next
+        if (aUsername.startsWith(queryLower) && !bUsername.startsWith(queryLower)) return -1;
+        if (bUsername.startsWith(queryLower) && !aUsername.startsWith(queryLower)) return 1;
+
+        return 0;
+      })
+      .slice(0, 10);
 
     return { users };
   } catch (error) {
-    console.error('Failed to search users:', error);
-    return { error: 'Failed to search users.' };
+    console.error('[searchUsers] Failed:', error);
+    return { error: 'Failed to search users.', users: [] };
   }
 }
 

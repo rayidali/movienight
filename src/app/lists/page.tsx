@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Film, Plus, Loader2, List, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Film, Plus, Loader2, List, MoreVertical, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { UserAvatar } from '@/components/user-avatar';
 import { collection, orderBy, query } from 'firebase/firestore';
@@ -22,6 +22,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -35,7 +36,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { createList, renameList, deleteList, ensureUserProfile, migrateMoviesToList } from '@/app/actions';
+import { createList, renameList, deleteList, ensureUserProfile, migrateMoviesToList, toggleListVisibility } from '@/app/actions';
 import type { MovieList } from '@/lib/types';
 
 const retroInputClass = "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] focus:shadow-[2px_2px_0px_0px_#000] focus:translate-x-0.5 focus:translate-y-0.5 transition-all duration-200";
@@ -205,6 +206,29 @@ export default function ListsPage() {
     setOpenDropdownId(null); // Close dropdown
   }, []);
 
+  // Handle visibility toggle
+  const handleToggleVisibility = useCallback(async (list: MovieList) => {
+    if (!user) return;
+    setOpenDropdownId(null); // Close dropdown first
+
+    try {
+      const result = await toggleListVisibility(user.uid, list.id);
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      } else {
+        toast({
+          title: list.isPublic ? 'List is now private' : 'List is now public',
+          description: list.isPublic
+            ? 'Only you can see this list.'
+            : 'Your followers can now see this list.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle visibility:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update visibility.' });
+    }
+  }, [user, toast]);
+
   // Handle dropdown open state change
   const handleDropdownOpenChange = useCallback((listId: string, open: boolean) => {
     if (open) {
@@ -314,6 +338,12 @@ export default function ListsPage() {
                             Default
                           </span>
                         )}
+                        {list.isPublic && (
+                          <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Eye className="h-3 w-3" />
+                            Public
+                          </span>
+                        )}
                       </div>
                       <DropdownMenu
                         open={openDropdownId === list.id}
@@ -323,8 +353,9 @@ export default function ListsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity touch-manipulation"
                             onClick={(e) => e.stopPropagation()}
+                            onTouchEnd={(e) => e.stopPropagation()}
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
@@ -334,14 +365,30 @@ export default function ListsPage() {
                             <Pencil className="h-4 w-4 mr-2" />
                             Rename
                           </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleToggleVisibility(list)}>
+                            {list.isPublic ? (
+                              <>
+                                <EyeOff className="h-4 w-4 mr-2" />
+                                Make Private
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Make Public
+                              </>
+                            )}
+                          </DropdownMenuItem>
                           {!list.isDefault && (
-                            <DropdownMenuItem
-                              onSelect={() => scheduleDelete(list)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onSelect={() => scheduleDelete(list)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
