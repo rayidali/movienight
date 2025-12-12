@@ -62,32 +62,60 @@ function MobileFallback({ url, provider }: { url: string; provider: string }) {
   );
 }
 
-// TikTok Embed Component - using direct iframe player (more reliable than embed.js)
+// TikTok Embed Component - blockquote + embed.js with reprocessing for dynamic insertion
 function TikTokEmbed({ videoId, url }: { videoId: string; url: string }) {
-  // TikTok's direct player iframe - bypasses embed.js script hydration
-  // which often fails on mobile/iOS Safari due to third-party storage restrictions
-  // Docs: https://developers.tiktok.com/doc/embed-player
+  const [isProcessed, setIsProcessed] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Check if videoId is a valid numeric ID (not a short code from vm.tiktok.com links)
-  // TikTok player requires the actual numeric video ID
-  const isValidVideoId = /^\d+$/.test(videoId);
+  // Extract username from URL if possible
+  const usernameMatch = url.match(/@([\w.-]+)/);
+  const username = usernameMatch ? usernameMatch[1] : 'user';
 
-  // If it's a short code (not numeric), show fallback with link to TikTok
-  if (!isValidVideoId) {
-    return <MobileFallback url={url} provider="tiktok" />;
-  }
+  // After component mounts, trigger TikTok to process this new blockquote
+  useEffect(() => {
+    const processEmbed = () => {
+      const win = window as any;
+      // TikTok embed.js exposes tiktokEmbed.lib.render() to process new blockquotes
+      if (win.tiktokEmbed?.lib?.render) {
+        win.tiktokEmbed.lib.render();
+        setIsProcessed(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Try immediately (script might already be loaded)
+    if (processEmbed()) return;
+
+    // Retry a few times with delays (wait for script to load)
+    const retryDelays = [100, 300, 500, 1000, 2000];
+    let currentRetry = 0;
+
+    const retryTimer = setInterval(() => {
+      if (processEmbed() || currentRetry >= retryDelays.length) {
+        clearInterval(retryTimer);
+      }
+      currentRetry++;
+    }, retryDelays[Math.min(currentRetry, retryDelays.length - 1)]);
+
+    return () => clearInterval(retryTimer);
+  }, [videoId]);
 
   return (
-    <div className="flex justify-center w-full">
-      <div style={{ width: '100%', maxWidth: '325px', aspectRatio: '9/16' }}>
-        <iframe
-          src={`https://www.tiktok.com/player/v1/${videoId}?music_info=1&description=1`}
-          style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px' }}
-          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
-          title="TikTok video"
-        />
-      </div>
+    <div ref={containerRef} className="flex justify-center w-full">
+      <blockquote
+        className="tiktok-embed"
+        cite={url}
+        data-video-id={videoId}
+        style={{ maxWidth: '325px', minWidth: '325px' }}
+      >
+        <section>
+          <a target="_blank" title={`@${username}`} href={`https://www.tiktok.com/@${username}?refer=embed`}>
+            @{username}
+          </a>
+        </section>
+      </blockquote>
+      <Script async src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
     </div>
   );
 }
