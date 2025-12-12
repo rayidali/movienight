@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ExternalLink, Play } from 'lucide-react';
 import Link from 'next/link';
 import Script from 'next/script';
@@ -17,6 +17,10 @@ type VideoEmbedProps = {
   autoLoad?: boolean;
   autoPlay?: boolean;
 };
+
+// Global state to track if scripts are loaded
+let tiktokScriptLoaded = false;
+let instagramScriptLoaded = false;
 
 function ProviderIcon({ provider }: { provider: ParsedVideo['provider'] }) {
   switch (provider) {
@@ -48,9 +52,7 @@ function MobileFallback({ url, provider }: { url: string; provider: string }) {
     <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-secondary to-secondary/50 rounded-lg min-h-[300px] gap-4">
       <ProviderIconComponent />
       <p className="text-sm text-muted-foreground text-center">
-        {provider === 'tiktok'
-          ? 'TikTok videos work best in the TikTok app'
-          : 'Tap below to watch the video'}
+        Tap below to watch the video
       </p>
       <Button asChild className={retroButtonClass}>
         <Link href={url} target="_blank" rel="noopener noreferrer">
@@ -62,44 +64,58 @@ function MobileFallback({ url, provider }: { url: string; provider: string }) {
   );
 }
 
-// TikTok Embed Component - blockquote + embed.js with reprocessing for dynamic insertion
+// TikTok Embed Component - matching View For You NYC pattern
 function TikTokEmbed({ videoId, url }: { videoId: string; url: string }) {
-  const [isProcessed, setIsProcessed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [needsScript, setNeedsScript] = useState(!tiktokScriptLoaded);
 
   // Extract username from URL if possible
   const usernameMatch = url.match(/@([\w.-]+)/);
   const username = usernameMatch ? usernameMatch[1] : 'user';
 
-  // After component mounts, trigger TikTok to process this new blockquote
+  // Process the embed after mount
   useEffect(() => {
     const processEmbed = () => {
       const win = window as any;
-      // TikTok embed.js exposes tiktokEmbed.lib.render() to process new blockquotes
       if (win.tiktokEmbed?.lib?.render) {
         win.tiktokEmbed.lib.render();
-        setIsProcessed(true);
         return true;
       }
       return false;
     };
 
-    // Try immediately (script might already be loaded)
-    if (processEmbed()) return;
+    // If script already loaded, process immediately
+    if (tiktokScriptLoaded) {
+      // Small delay to ensure DOM is ready
+      setTimeout(processEmbed, 100);
+      return;
+    }
 
-    // Retry a few times with delays (wait for script to load)
-    const retryDelays = [100, 300, 500, 1000, 2000];
-    let currentRetry = 0;
-
-    const retryTimer = setInterval(() => {
-      if (processEmbed() || currentRetry >= retryDelays.length) {
-        clearInterval(retryTimer);
+    // Wait for script to load
+    const checkInterval = setInterval(() => {
+      if (processEmbed()) {
+        clearInterval(checkInterval);
       }
-      currentRetry++;
-    }, retryDelays[Math.min(currentRetry, retryDelays.length - 1)]);
+    }, 200);
 
-    return () => clearInterval(retryTimer);
+    // Cleanup after 10 seconds
+    const timeout = setTimeout(() => {
+      clearInterval(checkInterval);
+    }, 10000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+    };
   }, [videoId]);
+
+  const handleScriptLoad = () => {
+    tiktokScriptLoaded = true;
+    const win = window as any;
+    if (win.tiktokEmbed?.lib?.render) {
+      win.tiktokEmbed.lib.render();
+    }
+  };
 
   return (
     <div ref={containerRef} className="flex justify-center w-full">
@@ -115,73 +131,71 @@ function TikTokEmbed({ videoId, url }: { videoId: string; url: string }) {
           </a>
         </section>
       </blockquote>
-      <Script async src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
+      {needsScript && (
+        <Script
+          src="https://www.tiktok.com/embed.js"
+          strategy="afterInteractive"
+          onLoad={handleScriptLoad}
+        />
+      )}
     </div>
   );
 }
 
-// Instagram Embed Component with retry logic
+// Instagram Embed Component - fixed to handle multiple embeds
 function InstagramEmbed({ videoId, url }: { videoId: string; url: string }) {
-  const [scriptLoaded, setScriptLoaded] = useState(false);
-  const [embedProcessed, setEmbedProcessed] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [needsScript, setNeedsScript] = useState(!instagramScriptLoaded);
+  const embedId = useRef(`ig-${videoId}-${Date.now()}`); // Unique ID for this embed
   const embedUrl = `https://www.instagram.com/reel/${videoId}/`;
 
-  // Process Instagram embed with retry logic
+  // Process this specific embed after mount
   useEffect(() => {
-    if (!scriptLoaded) return;
-
     const processEmbed = () => {
       const win = window as any;
       if (win.instgrm?.Embeds?.process) {
+        // Process all embeds on the page
         win.instgrm.Embeds.process();
-        setEmbedProcessed(true);
         return true;
       }
       return false;
     };
 
-    // Try immediately
-    if (processEmbed()) return;
+    // If script already loaded, process immediately
+    if (instagramScriptLoaded) {
+      // Small delay to ensure DOM is ready
+      setTimeout(processEmbed, 100);
+      return;
+    }
 
-    // Retry with increasing delays
-    const retryDelays = [100, 300, 500, 1000, 2000];
-    let currentRetry = 0;
-
-    const retryTimer = setInterval(() => {
-      if (processEmbed() || currentRetry >= retryDelays.length) {
-        clearInterval(retryTimer);
-        setRetryCount(currentRetry);
+    // Wait for script to load
+    const checkInterval = setInterval(() => {
+      if (processEmbed()) {
+        clearInterval(checkInterval);
       }
-      currentRetry++;
-    }, retryDelays[Math.min(currentRetry, retryDelays.length - 1)]);
+    }, 200);
 
-    return () => clearInterval(retryTimer);
-  }, [scriptLoaded, videoId]);
+    // Cleanup after 10 seconds
+    const timeout = setTimeout(() => {
+      clearInterval(checkInterval);
+    }, 10000);
 
-  // Check if embed actually rendered after processing
-  useEffect(() => {
-    if (!embedProcessed) return;
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+    };
+  }, [videoId]);
 
-    const checkTimer = setTimeout(() => {
-      if (containerRef.current) {
-        const iframe = containerRef.current.querySelector('iframe');
-        if (!iframe) {
-          // Embed didn't render, try processing again
-          const win = window as any;
-          if (win.instgrm?.Embeds?.process) {
-            win.instgrm.Embeds.process();
-          }
-        }
-      }
-    }, 2000);
-
-    return () => clearTimeout(checkTimer);
-  }, [embedProcessed]);
+  const handleScriptLoad = () => {
+    instagramScriptLoaded = true;
+    const win = window as any;
+    if (win.instgrm?.Embeds?.process) {
+      win.instgrm.Embeds.process();
+    }
+  };
 
   return (
-    <div ref={containerRef} className="flex justify-center w-full">
+    <div ref={containerRef} className="flex justify-center w-full" data-embed-id={embedId.current}>
       <blockquote
         className="instagram-media"
         data-instgrm-permalink={embedUrl}
@@ -275,12 +289,13 @@ function InstagramEmbed({ videoId, url }: { videoId: string; url: string }) {
           </p>
         </div>
       </blockquote>
-      <Script
-        async
-        src="https://www.instagram.com/embed.js"
-        strategy="lazyOnload"
-        onLoad={() => setScriptLoaded(true)}
-      />
+      {needsScript && (
+        <Script
+          src="https://www.instagram.com/embed.js"
+          strategy="afterInteractive"
+          onLoad={handleScriptLoad}
+        />
+      )}
     </div>
   );
 }
@@ -360,7 +375,6 @@ export function VideoEmbed({ url, autoLoad = false }: VideoEmbedProps) {
   }
 
   // Render the appropriate native embed based on provider
-  // Note: Each embed already has its own clickable links, no need for duplicate "Open in" button
   return (
     <div className="relative w-full bg-secondary rounded-lg border-[3px] border-black overflow-hidden p-4">
       {parsedVideo.provider === 'youtube' && parsedVideo.videoId && (
