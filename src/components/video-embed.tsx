@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Loader2, Play } from 'lucide-react';
 import Link from 'next/link';
 import { parseVideoUrl, getProviderDisplayName, type ParsedVideo } from '@/lib/video-utils';
@@ -14,7 +14,7 @@ const retroButtonClass =
 type VideoEmbedProps = {
   url: string | undefined;
   autoLoad?: boolean;
-  autoPlay?: boolean; // If true, uses autoplay embed URL
+  autoPlay?: boolean;
 };
 
 function ProviderIcon({ provider }: { provider: ParsedVideo['provider'] }) {
@@ -30,15 +30,219 @@ function ProviderIcon({ provider }: { provider: ParsedVideo['provider'] }) {
   }
 }
 
+// Load external script dynamically
+function loadScript(src: string, id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if (document.getElementById(id)) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.body.appendChild(script);
+  });
+}
+
+// TikTok Embed Component
+function TikTokEmbed({ videoId, url }: { videoId: string; url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTikTok = async () => {
+      try {
+        await loadScript('https://www.tiktok.com/embed.js', 'tiktok-embed-script');
+
+        // TikTok's embed.js looks for blockquotes and processes them
+        // We need to trigger reprocessing after adding our blockquote
+        if ((window as any).tiktokEmbed?.lib?.render) {
+          (window as any).tiktokEmbed.lib.render();
+        }
+
+        // Give it time to render
+        setTimeout(() => setIsLoading(false), 1000);
+      } catch (error) {
+        console.error('Failed to load TikTok embed:', error);
+        setIsLoading(false);
+      }
+    };
+
+    loadTikTok();
+  }, [videoId]);
+
+  // Extract username from URL if possible
+  const usernameMatch = url.match(/@([\w.-]+)/);
+  const username = usernameMatch ? usernameMatch[1] : 'user';
+
+  return (
+    <div ref={containerRef} className="relative w-full min-h-[400px]">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-secondary z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+      <blockquote
+        className="tiktok-embed"
+        cite={url}
+        data-video-id={videoId}
+        style={{ maxWidth: '100%', minWidth: '300px' }}
+      >
+        <section>
+          <a target="_blank" href={`https://www.tiktok.com/@${username}`}>@{username}</a>
+        </section>
+      </blockquote>
+    </div>
+  );
+}
+
+// Instagram Embed Component
+function InstagramEmbed({ videoId, url }: { videoId: string; url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadInstagram = async () => {
+      try {
+        await loadScript('https://www.instagram.com/embed.js', 'instagram-embed-script');
+
+        // Instagram's embed.js provides instgrm.Embeds.process()
+        if ((window as any).instgrm?.Embeds?.process) {
+          (window as any).instgrm.Embeds.process();
+        }
+
+        // Give it time to render
+        setTimeout(() => setIsLoading(false), 1000);
+      } catch (error) {
+        console.error('Failed to load Instagram embed:', error);
+        setIsLoading(false);
+      }
+    };
+
+    loadInstagram();
+  }, [videoId]);
+
+  const embedUrl = `https://www.instagram.com/p/${videoId}/`;
+
+  return (
+    <div ref={containerRef} className="relative w-full min-h-[400px]">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-secondary z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+      <blockquote
+        className="instagram-media"
+        data-instgrm-captioned
+        data-instgrm-permalink={embedUrl}
+        data-instgrm-version="14"
+        style={{
+          background: '#FFF',
+          border: 0,
+          borderRadius: '3px',
+          boxShadow: '0 0 1px 0 rgba(0,0,0,0.5), 0 1px 10px 0 rgba(0,0,0,0.15)',
+          margin: '1px',
+          maxWidth: '540px',
+          minWidth: '300px',
+          padding: 0,
+          width: '100%',
+        }}
+      >
+        <div style={{ padding: '16px' }}>
+          <a
+            href={embedUrl}
+            style={{
+              background: '#FFFFFF',
+              lineHeight: 0,
+              padding: 0,
+              textAlign: 'center',
+              textDecoration: 'none',
+              width: '100%',
+            }}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+              <div style={{
+                backgroundColor: '#F4F4F4',
+                borderRadius: '50%',
+                flexGrow: 0,
+                height: '40px',
+                marginRight: '14px',
+                width: '40px',
+              }} />
+              <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }}>
+                <div style={{
+                  backgroundColor: '#F4F4F4',
+                  borderRadius: '4px',
+                  flexGrow: 0,
+                  height: '14px',
+                  marginBottom: '6px',
+                  width: '100px',
+                }} />
+                <div style={{
+                  backgroundColor: '#F4F4F4',
+                  borderRadius: '4px',
+                  flexGrow: 0,
+                  height: '14px',
+                  width: '60px',
+                }} />
+              </div>
+            </div>
+            <div style={{ padding: '19% 0' }} />
+            <div style={{
+              color: '#3897f0',
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '14px',
+              fontStyle: 'normal',
+              fontWeight: 550,
+              lineHeight: '18px',
+            }}>
+              View this post on Instagram
+            </div>
+          </a>
+        </div>
+      </blockquote>
+    </div>
+  );
+}
+
+// YouTube Embed Component (works for Shorts too)
+function YouTubeEmbed({ videoId }: { videoId: string }) {
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <div className="relative w-full" style={{ aspectRatio: '9/16', maxWidth: '360px', margin: '0 auto' }}>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-secondary z-10 rounded-lg">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+      <iframe
+        style={{ width: '100%', height: '100%', borderRadius: '8px' }}
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1`}
+        title="YouTube video player"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        onLoad={() => setIsLoading(false)}
+      />
+    </div>
+  );
+}
+
 export function VideoEmbed({ url, autoLoad = false, autoPlay = true }: VideoEmbedProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const parsedVideo = parseVideoUrl(url);
 
   // Auto-load the embed if autoLoad is true
   useEffect(() => {
     if (autoLoad) {
-      setIsLoading(true);
       setIsLoaded(true);
     }
   }, [autoLoad]);
@@ -61,16 +265,8 @@ export function VideoEmbed({ url, autoLoad = false, autoPlay = true }: VideoEmbe
   }
 
   const handleLoadEmbed = () => {
-    setIsLoading(true);
     setIsLoaded(true);
   };
-
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
-
-  // Get the correct embed URL (with or without autoplay)
-  const embedSrc = autoPlay ? parsedVideo.embedUrlAutoplay : parsedVideo.embedUrl;
 
   // Show "Click to load" button before loading the iframe
   if (!isLoaded) {
@@ -96,53 +292,27 @@ export function VideoEmbed({ url, autoLoad = false, autoPlay = true }: VideoEmbe
     );
   }
 
-  // Render the appropriate embed based on provider
+  // Render the appropriate native embed based on provider
   return (
-    <div className="relative w-full aspect-[9/16] max-h-[500px] bg-secondary rounded-lg border-[3px] border-black overflow-hidden">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-secondary z-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+    <div className="relative w-full bg-secondary rounded-lg border-[3px] border-black overflow-hidden p-2">
+      {parsedVideo.provider === 'youtube' && parsedVideo.videoId && (
+        <YouTubeEmbed videoId={parsedVideo.videoId} />
       )}
 
-      {parsedVideo.provider === 'youtube' && embedSrc && (
-        <iframe
-          src={embedSrc}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          onLoad={handleIframeLoad}
-          title="YouTube video"
-        />
+      {parsedVideo.provider === 'tiktok' && parsedVideo.videoId && (
+        <TikTokEmbed videoId={parsedVideo.videoId} url={parsedVideo.url} />
       )}
 
-      {parsedVideo.provider === 'tiktok' && embedSrc && (
-        <iframe
-          src={embedSrc}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          onLoad={handleIframeLoad}
-          title="TikTok video"
-        />
+      {parsedVideo.provider === 'instagram' && parsedVideo.videoId && (
+        <InstagramEmbed videoId={parsedVideo.videoId} url={parsedVideo.url} />
       )}
 
-      {parsedVideo.provider === 'instagram' && embedSrc && (
-        <iframe
-          src={embedSrc}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          onLoad={handleIframeLoad}
-          title="Instagram video"
-        />
-      )}
-
-      {/* Fallback link if embed fails */}
-      <div className="absolute bottom-2 right-2">
-        <Button asChild variant="secondary" size="sm" className="opacity-70 hover:opacity-100">
+      {/* Fallback link */}
+      <div className="flex justify-center mt-2">
+        <Button asChild variant="ghost" size="sm">
           <Link href={parsedVideo.url} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Open in {getProviderDisplayName(parsedVideo.provider)}
           </Link>
         </Button>
       </div>
