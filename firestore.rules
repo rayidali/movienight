@@ -43,9 +43,21 @@ service cloud.firestore {
 
     /**
      * Checks if the authenticated user is a collaborator on the list.
+     * Handles the case where collaboratorIds might not exist.
      */
     function isCollaborator(listData) {
       return isSignedIn() &&
+             'collaboratorIds' in listData &&
+             request.auth.uid in listData.collaboratorIds;
+    }
+
+    /**
+     * Safely checks if user is a collaborator, returning false if field doesn't exist.
+     */
+    function isCollaboratorSafe(listData) {
+      return isSignedIn() &&
+             listData != null &&
+             'collaboratorIds' in listData &&
              listData.collaboratorIds != null &&
              request.auth.uid in listData.collaboratorIds;
     }
@@ -117,18 +129,33 @@ service cloud.firestore {
          */
         match /movies/{movieId} {
           // Get the parent list data for permission checks
-          function getList() {
+          function getListData() {
             return get(/databases/$(database)/documents/users/$(userId)/lists/$(listId)).data;
+          }
+
+          // Check if user is a collaborator on the parent list
+          function isListCollaborator() {
+            let listData = getListData();
+            return isSignedIn() &&
+                   listData != null &&
+                   'collaboratorIds' in listData &&
+                   request.auth.uid in listData.collaboratorIds;
+          }
+
+          // Check if list is public
+          function isListPublic() {
+            let listData = getListData();
+            return listData != null && listData.isPublic == true;
           }
 
           // Owner can do anything
           allow read, write: if isOwner(userId);
 
           // Collaborators can read and write movies
-          allow read, write: if isCollaborator(getList());
+          allow read, write: if isListCollaborator();
 
           // Public lists allow public read
-          allow read: if getList().isPublic == true;
+          allow read: if isListPublic();
         }
       }
 

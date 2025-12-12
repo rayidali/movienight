@@ -170,9 +170,22 @@ export default function ListDetailPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Collaborators sidebar - shows first on mobile, right side on desktop */}
+          {showCollaborators && effectiveOwnerId && listData && (
+            <div className="order-first lg:order-last lg:w-80 lg:flex-shrink-0">
+              <div className="lg:sticky lg:top-8">
+                <ListCollaborators
+                  listId={listId}
+                  listOwnerId={effectiveOwnerId}
+                  listName={listData.name}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Movie list */}
-          <div className="lg:col-span-3">
+          <div className="flex-1 min-w-0">
             <MovieList
               initialMovies={movies || []}
               isLoading={isLoadingMovies}
@@ -181,17 +194,6 @@ export default function ListDetailPage() {
               canEdit={canEdit}
             />
           </div>
-
-          {/* Collaborators sidebar */}
-          {showCollaborators && effectiveOwnerId && listData && (
-            <div className="lg:col-span-1">
-              <ListCollaborators
-                listId={listId}
-                listOwnerId={effectiveOwnerId}
-                listName={listData.name}
-              />
-            </div>
-          )}
         </div>
       </div>
     </main>
