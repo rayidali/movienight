@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useAuth, useUser } from '@/firebase';
 import {
   Avatar,
@@ -15,11 +16,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, User, Search } from 'lucide-react';
 
 export function UserAvatar() {
   const { user } = useUser();
   const auth = useAuth();
+  const router = useRouter();
 
   if (!user) {
     return null;
@@ -28,7 +30,7 @@ export function UserAvatar() {
   const handleSignOut = () => {
     auth.signOut();
   };
-  
+
   const userInitial = user.email ? user.email.charAt(0).toUpperCase() : '?';
 
   return (
@@ -44,7 +46,7 @@ export function UserAvatar() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent className="w-56 border-[2px] border-black" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">My Account</p>
@@ -53,6 +55,15 @@ export function UserAvatar() {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push('/profile')}>
+          <User className="mr-2 h-4 w-4" />
+          <span>My Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push('/profile')}>
+          <Search className="mr-2 h-4 w-4" />
+          <span>Find Friends</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { SearchResult } from '@/lib/types';
+import type { SearchResult, UserProfile } from '@/lib/types';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/firebase/admin';
 
@@ -14,12 +14,52 @@ function getDb() {
 // --- USER PROFILE ---
 
 /**
+ * Generates a unique username from email or display name.
+ */
+async function generateUniqueUsername(db: FirebaseFirestore.Firestore, email: string, displayName: string | null): Promise<string> {
+  // Start with the part before @ in email, or displayName
+  let baseUsername = displayName?.toLowerCase().replace(/[^a-z0-9]/g, '') ||
+                     email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  // Ensure minimum length
+  if (baseUsername.length < 3) {
+    baseUsername = baseUsername + 'user';
+  }
+
+  // Check if username exists and add numbers if needed
+  let username = baseUsername;
+  let counter = 1;
+
+  while (true) {
+    const existing = await db.collection('users')
+      .where('username', '==', username)
+      .limit(1)
+      .get();
+
+    if (existing.empty) {
+      return username;
+    }
+
+    username = `${baseUsername}${counter}`;
+    counter++;
+
+    // Safety limit
+    if (counter > 1000) {
+      return `${baseUsername}${Date.now()}`;
+    }
+  }
+}
+
+/**
  * Creates a user profile and default list when a user signs up.
  */
 export async function createUserProfile(userId: string, email: string, displayName: string | null) {
   const db = getDb();
 
   try {
+    // Generate unique username
+    const username = await generateUniqueUsername(db, email, displayName);
+
     // Create user profile document
     const userRef = db.collection('users').doc(userId);
     await userRef.set({
@@ -27,6 +67,9 @@ export async function createUserProfile(userId: string, email: string, displayNa
       email: email,
       displayName: displayName,
       photoURL: null,
+      username: username,
+      followersCount: 0,
+      followingCount: 0,
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -38,9 +81,11 @@ export async function createUserProfile(userId: string, email: string, displayNa
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDefault: true,
+      isPublic: true, // Default list is public by default
+      ownerId: userId,
     });
 
-    return { success: true, defaultListId: listRef.id };
+    return { success: true, defaultListId: listRef.id, username };
   } catch (error) {
     console.error('Failed to create user profile:', error);
     return { error: 'Failed to create user profile.' };
@@ -49,6 +94,7 @@ export async function createUserProfile(userId: string, email: string, displayNa
 
 /**
  * Ensures a user has a profile and default list (for existing users).
+ * Also migrates existing users to have social fields.
  */
 export async function ensureUserProfile(userId: string, email: string, displayName: string | null) {
   const db = getDb();
@@ -60,6 +106,17 @@ export async function ensureUserProfile(userId: string, email: string, displayNa
     if (!userDoc.exists) {
       // Create profile if it doesn't exist
       return await createUserProfile(userId, email, displayName);
+    }
+
+    // Check if user needs social fields migration
+    const userData = userDoc.data();
+    if (userData && (userData.username === undefined || userData.followersCount === undefined)) {
+      const username = userData.username || await generateUniqueUsername(db, email, displayName);
+      await userRef.update({
+        username: username,
+        followersCount: userData.followersCount ?? 0,
+        followingCount: userData.followingCount ?? 0,
+      });
     }
 
     // Check if user has any lists
@@ -74,6 +131,8 @@ export async function ensureUserProfile(userId: string, email: string, displayNa
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
         isDefault: true,
+        isPublic: true,
+        ownerId: userId,
       });
       return { success: true, defaultListId: listRef.id };
     }
@@ -102,7 +161,7 @@ export async function ensureUserProfile(userId: string, email: string, displayNa
 /**
  * Creates a new list for a user.
  */
-export async function createList(userId: string, name: string) {
+export async function createList(userId: string, name: string, isPublic: boolean = true) {
   const db = getDb();
 
   try {
@@ -113,6 +172,8 @@ export async function createList(userId: string, name: string) {
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDefault: false,
+      isPublic: isPublic,
+      ownerId: userId,
     });
 
     revalidatePath('/lists');
@@ -272,7 +333,7 @@ export async function addMovie(formData: FormData) {
     if (listsSnapshot.empty) {
       // Create default list if none exists
       const result = await ensureUserProfile(addedBy, '', null);
-      if (result.error || !result.defaultListId) {
+      if ('error' in result || !result.defaultListId) {
         throw new Error('Could not find or create default list.');
       }
       listId = result.defaultListId;
@@ -336,5 +397,440 @@ export async function migrateMoviesToList(userId: string, listId: string) {
   } catch (error) {
     console.error('Failed to migrate movies:', error);
     return { error: 'Failed to migrate movies.' };
+  }
+}
+
+// --- SOCIAL FEATURES ---
+
+/**
+ * Search for users by username or email.
+ */
+export async function searchUsers(query: string, currentUserId: string) {
+  const db = getDb();
+
+  try {
+    if (!query || query.length < 2) {
+      return { users: [] };
+    }
+
+    const queryLower = query.toLowerCase();
+
+    // Search by username (prefix match)
+    const usernameResults = await db.collection('users')
+      .where('username', '>=', queryLower)
+      .where('username', '<=', queryLower + '\uf8ff')
+      .limit(10)
+      .get();
+
+    // Search by email (exact or prefix)
+    const emailResults = await db.collection('users')
+      .where('email', '>=', queryLower)
+      .where('email', '<=', queryLower + '\uf8ff')
+      .limit(10)
+      .get();
+
+    // Combine results and remove duplicates and current user
+    const usersMap = new Map<string, UserProfile>();
+
+    usernameResults.docs.forEach((doc) => {
+      const data = doc.data() as UserProfile;
+      if (data.uid !== currentUserId) {
+        usersMap.set(data.uid, data);
+      }
+    });
+
+    emailResults.docs.forEach((doc) => {
+      const data = doc.data() as UserProfile;
+      if (data.uid !== currentUserId && !usersMap.has(data.uid)) {
+        usersMap.set(data.uid, data);
+      }
+    });
+
+    const users = Array.from(usersMap.values()).slice(0, 10);
+
+    return { users };
+  } catch (error) {
+    console.error('Failed to search users:', error);
+    return { error: 'Failed to search users.' };
+  }
+}
+
+/**
+ * Get a user's profile by ID.
+ */
+export async function getUserProfile(userId: string) {
+  const db = getDb();
+
+  try {
+    const userDoc = await db.collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      return { error: 'User not found.' };
+    }
+
+    return { user: userDoc.data() as UserProfile };
+  } catch (error) {
+    console.error('Failed to get user profile:', error);
+    return { error: 'Failed to get user profile.' };
+  }
+}
+
+/**
+ * Get a user's profile by username.
+ */
+export async function getUserByUsername(username: string) {
+  const db = getDb();
+
+  try {
+    const usersSnapshot = await db.collection('users')
+      .where('username', '==', username.toLowerCase())
+      .limit(1)
+      .get();
+
+    if (usersSnapshot.empty) {
+      return { error: 'User not found.' };
+    }
+
+    return { user: usersSnapshot.docs[0].data() as UserProfile };
+  } catch (error) {
+    console.error('Failed to get user by username:', error);
+    return { error: 'Failed to get user by username.' };
+  }
+}
+
+/**
+ * Update a user's username.
+ */
+export async function updateUsername(userId: string, newUsername: string) {
+  const db = getDb();
+
+  try {
+    const username = newUsername.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (username.length < 3) {
+      return { error: 'Username must be at least 3 characters.' };
+    }
+
+    if (username.length > 20) {
+      return { error: 'Username must be 20 characters or less.' };
+    }
+
+    // Check if username is taken
+    const existing = await db.collection('users')
+      .where('username', '==', username)
+      .limit(1)
+      .get();
+
+    if (!existing.empty && existing.docs[0].id !== userId) {
+      return { error: 'Username is already taken.' };
+    }
+
+    await db.collection('users').doc(userId).update({
+      username: username,
+    });
+
+    revalidatePath('/profile');
+    return { success: true, username };
+  } catch (error) {
+    console.error('Failed to update username:', error);
+    return { error: 'Failed to update username.' };
+  }
+}
+
+/**
+ * Follow a user.
+ */
+export async function followUser(followerId: string, followingId: string) {
+  const db = getDb();
+
+  try {
+    if (followerId === followingId) {
+      return { error: "You can't follow yourself." };
+    }
+
+    // Check if already following
+    const existingFollow = await db
+      .collection('users')
+      .doc(followerId)
+      .collection('following')
+      .doc(followingId)
+      .get();
+
+    if (existingFollow.exists) {
+      return { error: 'Already following this user.' };
+    }
+
+    const batch = db.batch();
+
+    // Add to follower's following list
+    batch.set(
+      db.collection('users').doc(followerId).collection('following').doc(followingId),
+      {
+        id: followingId,
+        followerId: followerId,
+        followingId: followingId,
+        createdAt: FieldValue.serverTimestamp(),
+      }
+    );
+
+    // Add to target's followers list
+    batch.set(
+      db.collection('users').doc(followingId).collection('followers').doc(followerId),
+      {
+        id: followerId,
+        followerId: followerId,
+        followingId: followingId,
+        createdAt: FieldValue.serverTimestamp(),
+      }
+    );
+
+    // Update counts
+    batch.update(db.collection('users').doc(followerId), {
+      followingCount: FieldValue.increment(1),
+    });
+
+    batch.update(db.collection('users').doc(followingId), {
+      followersCount: FieldValue.increment(1),
+    });
+
+    await batch.commit();
+
+    revalidatePath('/profile');
+    revalidatePath(`/profile/${followingId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to follow user:', error);
+    return { error: 'Failed to follow user.' };
+  }
+}
+
+/**
+ * Unfollow a user.
+ */
+export async function unfollowUser(followerId: string, followingId: string) {
+  const db = getDb();
+
+  try {
+    const batch = db.batch();
+
+    // Remove from follower's following list
+    batch.delete(
+      db.collection('users').doc(followerId).collection('following').doc(followingId)
+    );
+
+    // Remove from target's followers list
+    batch.delete(
+      db.collection('users').doc(followingId).collection('followers').doc(followerId)
+    );
+
+    // Update counts
+    batch.update(db.collection('users').doc(followerId), {
+      followingCount: FieldValue.increment(-1),
+    });
+
+    batch.update(db.collection('users').doc(followingId), {
+      followersCount: FieldValue.increment(-1),
+    });
+
+    await batch.commit();
+
+    revalidatePath('/profile');
+    revalidatePath(`/profile/${followingId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to unfollow user:', error);
+    return { error: 'Failed to unfollow user.' };
+  }
+}
+
+/**
+ * Check if a user is following another user.
+ */
+export async function isFollowing(followerId: string, followingId: string) {
+  const db = getDb();
+
+  try {
+    const followDoc = await db
+      .collection('users')
+      .doc(followerId)
+      .collection('following')
+      .doc(followingId)
+      .get();
+
+    return { isFollowing: followDoc.exists };
+  } catch (error) {
+    console.error('Failed to check follow status:', error);
+    return { error: 'Failed to check follow status.' };
+  }
+}
+
+/**
+ * Get a user's followers.
+ */
+export async function getFollowers(userId: string, limit: number = 50) {
+  const db = getDb();
+
+  try {
+    const followersSnapshot = await db
+      .collection('users')
+      .doc(userId)
+      .collection('followers')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    // Get user profiles for each follower
+    const followerIds = followersSnapshot.docs.map((doc) => doc.id);
+    const users: UserProfile[] = [];
+
+    for (const id of followerIds) {
+      const userDoc = await db.collection('users').doc(id).get();
+      if (userDoc.exists) {
+        users.push(userDoc.data() as UserProfile);
+      }
+    }
+
+    return { users };
+  } catch (error) {
+    console.error('Failed to get followers:', error);
+    return { error: 'Failed to get followers.' };
+  }
+}
+
+/**
+ * Get users that a user is following.
+ */
+export async function getFollowing(userId: string, limit: number = 50) {
+  const db = getDb();
+
+  try {
+    const followingSnapshot = await db
+      .collection('users')
+      .doc(userId)
+      .collection('following')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    // Get user profiles for each following
+    const followingIds = followingSnapshot.docs.map((doc) => doc.id);
+    const users: UserProfile[] = [];
+
+    for (const id of followingIds) {
+      const userDoc = await db.collection('users').doc(id).get();
+      if (userDoc.exists) {
+        users.push(userDoc.data() as UserProfile);
+      }
+    }
+
+    return { users };
+  } catch (error) {
+    console.error('Failed to get following:', error);
+    return { error: 'Failed to get following.' };
+  }
+}
+
+/**
+ * Get a user's public lists (for viewing by others).
+ */
+export async function getUserPublicLists(userId: string) {
+  const db = getDb();
+
+  try {
+    const listsSnapshot = await db
+      .collection('users')
+      .doc(userId)
+      .collection('lists')
+      .where('isPublic', '==', true)
+      .orderBy('updatedAt', 'desc')
+      .get();
+
+    const lists = listsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return { lists };
+  } catch (error) {
+    console.error('Failed to get public lists:', error);
+    return { error: 'Failed to get public lists.' };
+  }
+}
+
+/**
+ * Get movies from a public list (for viewing by others).
+ */
+export async function getPublicListMovies(ownerId: string, listId: string, viewerId: string) {
+  const db = getDb();
+
+  try {
+    // Check if list is public or viewer is the owner
+    const listDoc = await db
+      .collection('users')
+      .doc(ownerId)
+      .collection('lists')
+      .doc(listId)
+      .get();
+
+    if (!listDoc.exists) {
+      return { error: 'List not found.' };
+    }
+
+    const listData = listDoc.data();
+
+    if (!listData?.isPublic && ownerId !== viewerId) {
+      return { error: 'This list is private.' };
+    }
+
+    const moviesSnapshot = await db
+      .collection('users')
+      .doc(ownerId)
+      .collection('lists')
+      .doc(listId)
+      .collection('movies')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const movies = moviesSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return {
+      list: { id: listDoc.id, ...listData },
+      movies,
+    };
+  } catch (error) {
+    console.error('Failed to get public list movies:', error);
+    return { error: 'Failed to get list movies.' };
+  }
+}
+
+/**
+ * Toggle a list's public/private status.
+ */
+export async function toggleListVisibility(userId: string, listId: string) {
+  const db = getDb();
+
+  try {
+    const listRef = db.collection('users').doc(userId).collection('lists').doc(listId);
+    const listDoc = await listRef.get();
+
+    if (!listDoc.exists) {
+      return { error: 'List not found.' };
+    }
+
+    const currentVisibility = listDoc.data()?.isPublic ?? true;
+    await listRef.update({
+      isPublic: !currentVisibility,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    revalidatePath('/lists');
+    revalidatePath(`/lists/${listId}`);
+    return { success: true, isPublic: !currentVisibility };
+  } catch (error) {
+    console.error('Failed to toggle list visibility:', error);
+    return { error: 'Failed to toggle list visibility.' };
   }
 }

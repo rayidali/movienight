@@ -7,6 +7,17 @@ export type UserProfile = {
   email: string;
   displayName: string | null;
   photoURL: string | null;
+  username: string | null; // Unique username for searching/following
+  createdAt: Date;
+  followersCount: number;
+  followingCount: number;
+};
+
+// Follow relationship
+export type Follow = {
+  id: string; // Document ID (usually the followed user's ID)
+  followerId: string; // User who is following
+  followingId: string; // User being followed
   createdAt: Date;
 };
 
@@ -17,6 +28,8 @@ export type MovieList = {
   createdAt: Date;
   updatedAt: Date;
   isDefault: boolean; // The first list created for a user
+  isPublic: boolean; // Whether the list is visible to followers
+  ownerId: string; // User who owns the list
 };
 
 // A movie in a list
