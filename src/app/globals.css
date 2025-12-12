@@ -81,4 +81,26 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Mobile performance optimizations */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  /* Faster touch response on interactive elements */
+  button, a, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  /* Prevent text selection on interactive elements for better mobile UX */
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Smooth scrolling containers */
+  .overflow-y-auto, .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }

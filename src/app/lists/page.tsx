@@ -301,7 +301,7 @@ export default function ListsPage() {
               {lists.map((list) => (
                 <Card
                   key={list.id}
-                  className="border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] hover:shadow-[2px_2px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-200 cursor-pointer group"
+                  className="border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] md:hover:shadow-[2px_2px_0px_0px_#000] md:hover:translate-x-0.5 md:hover:translate-y-0.5 transition-all duration-200 cursor-pointer group active:shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 touch-manipulation"
                   onClick={(e) => handleCardClick(list.id, e)}
                 >
                   <CardHeader className="pb-2">
@@ -323,7 +323,7 @@ export default function ListsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreVertical className="h-4 w-4" />

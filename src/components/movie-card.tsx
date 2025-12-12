@@ -293,7 +293,7 @@ export function MovieCard({ movie, listId, userAvatarUrl }: MovieCardProps) {
 
   return (
     <>
-      <Card className="flex flex-col border-[3px] border-black rounded-lg shadow-[8px_8px_0px_0px_#000] overflow-hidden transition-all duration-200 hover:shadow-[4px_4px_0px_0px_#000]">
+      <Card className="flex flex-col border-[3px] border-black rounded-lg shadow-[8px_8px_0px_0px_#000] overflow-hidden transition-all duration-200 md:hover:shadow-[4px_4px_0px_0px_#000] active:shadow-[4px_4px_0px_0px_#000]">
         <CardHeader>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -337,8 +337,8 @@ export function MovieCard({ movie, listId, userAvatarUrl }: MovieCardProps) {
               data-ai-hint={movie.posterHint}
             />
 
-            {/* Overlay with "View Details" */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+            {/* Overlay with "View Details" - hidden on mobile, shown on desktop hover */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 md:group-hover:opacity-100 transition-opacity rounded-md pointer-events-none">
               <div className="flex flex-col items-center gap-2 text-white">
                 <Maximize2 className="h-8 w-8" />
                 <span className="font-bold text-sm bg-black/50 px-3 py-1 rounded-full">
