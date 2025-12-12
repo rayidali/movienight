@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Film, ArrowLeft, Users, AlertTriangle } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -18,11 +18,15 @@ export default function ListDetailPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const listId = params.listId as string;
   const firestore = useFirestore();
 
-  // State for collaborative list lookup
-  const [collaborativeListOwner, setCollaborativeListOwner] = useState<string | null>(null);
+  // Check if owner was passed in query params (from invite acceptance)
+  const ownerFromQuery = searchParams.get('owner');
+
+  // State for collaborative list lookup - initialize from query param if available
+  const [collaborativeListOwner, setCollaborativeListOwner] = useState<string | null>(ownerFromQuery);
   const [isCheckingCollab, setIsCheckingCollab] = useState(false);
 
   // Determine the effective owner ID (user's own or collaborative)
@@ -71,8 +75,21 @@ export default function ListDetailPage() {
     isPermissionError(moviesError);
 
   // Check for collaborative lists if own list not found
+  // Skip if we already have owner from query params (except if it's the current user)
   useEffect(() => {
     async function checkCollaborativeLists() {
+      // If owner from query is the current user, clear it (it's their own list)
+      if (ownerFromQuery && user && ownerFromQuery === user.uid) {
+        setCollaborativeListOwner(null);
+        return;
+      }
+
+      // Skip lookup if we already have a collaborative owner from query
+      if (collaborativeListOwner && collaborativeListOwner !== user?.uid) {
+        return;
+      }
+
+      // Skip if we found own list or still loading
       if (!user || isLoadingOwnList || ownListData || isCheckingCollab) return;
 
       setIsCheckingCollab(true);
@@ -90,7 +107,7 @@ export default function ListDetailPage() {
     }
 
     checkCollaborativeLists();
-  }, [user, listId, isLoadingOwnList, ownListData, isCheckingCollab]);
+  }, [user, listId, isLoadingOwnList, ownListData, isCheckingCollab, ownerFromQuery, collaborativeListOwner]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -116,8 +133,15 @@ export default function ListDetailPage() {
     );
   }
 
-  // Show loading while checking for collaborative lists
-  if (isCheckingCollab || (isLoadingOwnList && !ownListData)) {
+  // Show loading while:
+  // 1. Checking for collaborative lists
+  // 2. Loading own list
+  // 3. Loading collaborative list (after we've identified there's one)
+  const isLoading = isCheckingCollab ||
+    isLoadingOwnList ||
+    (collaborativeListOwner && isLoadingCollabList);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Film className="h-12 w-12 text-primary animate-spin" />

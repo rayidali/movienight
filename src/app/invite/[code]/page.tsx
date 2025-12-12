@@ -64,8 +64,10 @@ export default function InvitePage() {
           title: 'Invite Accepted!',
           description: `You are now a collaborator on "${invite.listName}"`,
         });
-        // Redirect to the list - use /lists/[listId] which handles collaborative lists
-        router.push(`/lists/${invite.listId}`);
+        // Redirect to the list with owner info so we can load it directly
+        // Use listOwnerId from the result to avoid race conditions
+        const ownerId = result.listOwnerId || invite.listOwnerId;
+        router.push(`/lists/${invite.listId}?owner=${ownerId}`);
       }
     } catch (err) {
       console.error('Failed to accept invite:', err);
