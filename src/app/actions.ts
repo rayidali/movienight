@@ -593,13 +593,14 @@ export async function searchUsers(query: string, currentUserId: string) {
       const matchesDisplayName = displayName && displayName.includes(queryLower);
 
       if (matchesUsername || matchesEmail || matchesDisplayName) {
+        // Convert Firestore Timestamp to ISO string for serialization
         const userProfile: UserProfile = {
           uid: docUid,
           email: data.email || '',
           displayName: data.displayName || null,
           photoURL: data.photoURL || null,
           username: data.username || null,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
+          createdAt: data.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
           followersCount: data.followersCount || 0,
           followingCount: data.followingCount || 0,
         };
@@ -1106,13 +1107,40 @@ export async function getPublicListMovies(ownerId: string, listId: string, viewe
       .orderBy('createdAt', 'desc')
       .get();
 
-    const movies = moviesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    // Convert Firestore Timestamps to ISO strings for serialization
+    const movies = moviesSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title,
+        year: data.year,
+        posterUrl: data.posterUrl,
+        posterHint: data.posterHint,
+        addedBy: data.addedBy,
+        socialLink: data.socialLink || '',
+        status: data.status,
+        tmdbId: data.tmdbId,
+        overview: data.overview,
+        rating: data.rating,
+        backdropUrl: data.backdropUrl,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+      };
+    });
+
+    // Serialize list data
+    const serializedList = {
+      id: listDoc.id,
+      name: listData?.name,
+      isDefault: listData?.isDefault || false,
+      isPublic: listData?.isPublic || false,
+      ownerId: listData?.ownerId,
+      collaboratorIds: listData?.collaboratorIds || [],
+      createdAt: listData?.createdAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+      updatedAt: listData?.updatedAt?.toDate?.()?.toISOString?.() || new Date().toISOString(),
+    };
 
     return {
-      list: { id: listDoc.id, ...listData },
+      list: serializedList,
       movies,
       isCollaborator: isCollaborator && !isOwner, // For UI to know user's role
     };
