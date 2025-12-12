@@ -107,19 +107,35 @@ export default function MyProfilePage() {
 
   const handleLoadFollowers = async () => {
     if (!user) return;
-    const result = await getFollowers(user.uid);
-    if (result.users) {
-      setFollowers(result.users);
+    try {
+      const result = await getFollowers(user.uid);
+      setFollowers(result.users || []);
       setShowFollowers(true);
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (error) {
+      console.error('Failed to load followers:', error);
+      setFollowers([]);
+      setShowFollowers(true);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to load followers' });
     }
   };
 
   const handleLoadFollowing = async () => {
     if (!user) return;
-    const result = await getFollowing(user.uid);
-    if (result.users) {
-      setFollowing(result.users);
+    try {
+      const result = await getFollowing(user.uid);
+      setFollowing(result.users || []);
       setShowFollowing(true);
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (error) {
+      console.error('Failed to load following:', error);
+      setFollowing([]);
+      setShowFollowing(true);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to load following' });
     }
   };
 

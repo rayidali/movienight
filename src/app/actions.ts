@@ -773,13 +773,19 @@ export async function getFollowers(userId: string, limit: number = 50) {
   const db = getDb();
 
   try {
+    // Try without orderBy first (doesn't require index)
     const followersSnapshot = await db
       .collection('users')
       .doc(userId)
       .collection('followers')
-      .orderBy('createdAt', 'desc')
       .limit(limit)
       .get();
+
+    console.log(`[getFollowers] Found ${followersSnapshot.size} followers for user ${userId}`);
+
+    if (followersSnapshot.empty) {
+      return { users: [] };
+    }
 
     // Get user profiles for each follower
     const followerIds = followersSnapshot.docs.map((doc) => doc.id);
@@ -788,14 +794,25 @@ export async function getFollowers(userId: string, limit: number = 50) {
     for (const id of followerIds) {
       const userDoc = await db.collection('users').doc(id).get();
       if (userDoc.exists) {
-        users.push(userDoc.data() as UserProfile);
+        const data = userDoc.data();
+        users.push({
+          uid: data?.uid || id,
+          email: data?.email || '',
+          displayName: data?.displayName || null,
+          photoURL: data?.photoURL || null,
+          username: data?.username || null,
+          createdAt: data?.createdAt?.toDate?.() || new Date(),
+          followersCount: data?.followersCount || 0,
+          followingCount: data?.followingCount || 0,
+        });
       }
     }
 
+    console.log(`[getFollowers] Returning ${users.length} user profiles`);
     return { users };
   } catch (error) {
-    console.error('Failed to get followers:', error);
-    return { error: 'Failed to get followers.' };
+    console.error('[getFollowers] Failed:', error);
+    return { error: 'Failed to get followers.', users: [] };
   }
 }
 
@@ -806,13 +823,19 @@ export async function getFollowing(userId: string, limit: number = 50) {
   const db = getDb();
 
   try {
+    // Try without orderBy first (doesn't require index)
     const followingSnapshot = await db
       .collection('users')
       .doc(userId)
       .collection('following')
-      .orderBy('createdAt', 'desc')
       .limit(limit)
       .get();
+
+    console.log(`[getFollowing] Found ${followingSnapshot.size} following for user ${userId}`);
+
+    if (followingSnapshot.empty) {
+      return { users: [] };
+    }
 
     // Get user profiles for each following
     const followingIds = followingSnapshot.docs.map((doc) => doc.id);
@@ -821,14 +844,25 @@ export async function getFollowing(userId: string, limit: number = 50) {
     for (const id of followingIds) {
       const userDoc = await db.collection('users').doc(id).get();
       if (userDoc.exists) {
-        users.push(userDoc.data() as UserProfile);
+        const data = userDoc.data();
+        users.push({
+          uid: data?.uid || id,
+          email: data?.email || '',
+          displayName: data?.displayName || null,
+          photoURL: data?.photoURL || null,
+          username: data?.username || null,
+          createdAt: data?.createdAt?.toDate?.() || new Date(),
+          followersCount: data?.followersCount || 0,
+          followingCount: data?.followingCount || 0,
+        });
       }
     }
 
+    console.log(`[getFollowing] Returning ${users.length} user profiles`);
     return { users };
   } catch (error) {
-    console.error('Failed to get following:', error);
-    return { error: 'Failed to get following.' };
+    console.error('[getFollowing] Failed:', error);
+    return { error: 'Failed to get following.', users: [] };
   }
 }
 

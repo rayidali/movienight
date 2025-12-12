@@ -8,6 +8,7 @@ import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FollowButton } from '@/components/follow-button';
+import { useToast } from '@/hooks/use-toast';
 import {
   getUserByUsername,
   getUserPublicLists,
@@ -39,6 +40,7 @@ export default function UserProfilePage() {
   const router = useRouter();
   const params = useParams();
   const username = params.username as string;
+  const { toast } = useToast();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [lists, setLists] = useState<MovieList[]>([]);
@@ -91,19 +93,35 @@ export default function UserProfilePage() {
 
   const handleLoadFollowers = async () => {
     if (!profile) return;
-    const result = await getFollowers(profile.uid);
-    if (result.users) {
-      setFollowers(result.users);
+    try {
+      const result = await getFollowers(profile.uid);
+      setFollowers(result.users || []);
       setShowFollowers(true);
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (error) {
+      console.error('Failed to load followers:', error);
+      setFollowers([]);
+      setShowFollowers(true);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to load followers' });
     }
   };
 
   const handleLoadFollowing = async () => {
     if (!profile) return;
-    const result = await getFollowing(profile.uid);
-    if (result.users) {
-      setFollowing(result.users);
+    try {
+      const result = await getFollowing(profile.uid);
+      setFollowing(result.users || []);
       setShowFollowing(true);
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (error) {
+      console.error('Failed to load following:', error);
+      setFollowing([]);
+      setShowFollowing(true);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to load following' });
     }
   };
 
