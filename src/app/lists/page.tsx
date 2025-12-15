@@ -284,14 +284,14 @@ export default function ListsPage() {
 
   if (isUserLoading || !user || isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen">
         <Film className="h-12 w-12 text-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background font-body text-foreground">
+    <main className="min-h-screen font-body text-foreground">
       <div className="container mx-auto p-4 md:p-8">
         <header className="mb-12">
           <div className="w-full flex justify-end items-center gap-3 mb-4">

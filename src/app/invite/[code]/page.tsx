@@ -79,7 +79,7 @@ export default function InvitePage() {
 
   if (isLoading || isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen">
         <Film className="h-12 w-12 text-primary animate-spin" />
       </div>
     );
@@ -87,7 +87,7 @@ export default function InvitePage() {
 
   if (error || !invite) {
     return (
-      <main className="min-h-screen bg-background font-body text-foreground">
+      <main className="min-h-screen font-body text-foreground">
         <div className="container mx-auto p-4 md:p-8">
           <div className="flex flex-col items-center justify-center min-h-[50vh]">
             <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4 border-[3px] border-black">
@@ -108,7 +108,7 @@ export default function InvitePage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-background font-body text-foreground">
+      <main className="min-h-screen font-body text-foreground">
         <div className="container mx-auto p-4 md:p-8">
           <div className="flex flex-col items-center justify-center min-h-[50vh]">
             <Card className="w-full max-w-md border-[3px] border-black shadow-[8px_8px_0px_0px_#000]">
@@ -143,7 +143,7 @@ export default function InvitePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background font-body text-foreground">
+    <main className="min-h-screen font-body text-foreground">
       <div className="container mx-auto p-4 md:p-8">
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
           <Card className="w-full max-w-md border-[3px] border-black shadow-[8px_8px_0px_0px_#000]">

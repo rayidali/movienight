@@ -182,18 +182,35 @@
 @layer utilities {
   .bg-dot-pattern {
     background-image: radial-gradient(
-      hsl(var(--dot-color) / var(--dot-opacity)) 1px,
-      transparent 1px
+      hsl(var(--dot-color) / var(--dot-opacity)) 1.5px,
+      transparent 1.5px
     );
-    background-size: 16px 16px;
+    background-size: 20px 20px;
   }
 }
 
-/* Apply dot pattern to body by default */
-body {
+/* Combined background with dots - use this instead of bg-background */
+.bg-background-dots {
+  background-color: hsl(var(--background));
   background-image: radial-gradient(
-    hsl(var(--dot-color) / var(--dot-opacity)) 1px,
-    transparent 1px
+    hsl(var(--dot-color) / var(--dot-opacity)) 1.5px,
+    transparent 1.5px
   );
-  background-size: 16px 16px;
+  background-size: 20px 20px;
+}
+
+/* Apply to html/body for consistent background */
+html {
+  background-color: hsl(var(--background));
+  background-image: radial-gradient(
+    hsl(var(--dot-color) / var(--dot-opacity)) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 20px 20px;
+  min-height: 100%;
+}
+
+body {
+  background: transparent;
+  min-height: 100%;
 }
