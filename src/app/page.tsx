@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Film, Users, List, Tv, ArrowRight, Sparkles, Zap, Heart, Popcorn, Clapperboard, Star } from 'lucide-react';
+import { Film, ArrowRight, Popcorn } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -23,213 +23,64 @@ export default function LandingPage() {
 
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen">
         <Film className="h-12 w-12 text-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background font-body text-foreground overflow-hidden">
-      {/* Floating decorative elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <Popcorn className="absolute top-20 left-[10%] h-8 w-8 text-warning/40 animate-float" />
-        <Star className="absolute top-32 right-[15%] h-6 w-6 text-accent/50 animate-float-delayed" />
-        <Clapperboard className="absolute top-[40%] left-[5%] h-10 w-10 text-primary/30 animate-float-delayed" />
-        <Film className="absolute top-[60%] right-[8%] h-8 w-8 text-warning/30 animate-float" />
-        <Heart className="absolute bottom-[30%] left-[12%] h-6 w-6 text-destructive/30 animate-bounce-subtle" />
-        <Tv className="absolute bottom-[20%] right-[10%] h-8 w-8 text-primary/30 animate-float" />
+    <main className="min-h-screen font-body text-foreground flex flex-col">
+      {/* Theme toggle - top right */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
       </div>
 
-      {/* Header */}
-      <header className="container mx-auto px-4 py-6 relative z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary p-1.5 rounded-lg border-[2px] border-black animate-pulse-shadow">
-              <Film className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <span className="font-headline font-bold text-xl">MovieNight</span>
+      {/* Main content - centered splash screen style */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        {/* Logo and title */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-primary p-4 rounded-2xl border-[3px] border-black shadow-[6px_6px_0px_0px_#000] mb-6 animate-bounce-subtle">
+            <Film className="h-16 w-16 text-primary-foreground" />
           </div>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <Link href="/login">
-              <Button variant="ghost" className="font-bold">
-                Log In
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`}>
-                Sign Up
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 md:py-24 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-accent/30 text-accent-foreground px-4 py-2 rounded-full border-[2px] border-black mb-8 animate-bounce-subtle">
-            <Zap className="h-4 w-4 text-warning" />
-            <span className="font-bold text-sm">The watchlist app with collaborative lists</span>
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-headline font-bold tracking-tighter mb-6">
-            Plan movie nights.
-            <br />
-            <span className="text-primary">Together.</span>
+          <h1 className="text-5xl md:text-6xl font-headline font-bold tracking-tighter text-center">
+            MovieNight
           </h1>
-
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Create shared watchlists with friends, save that TikTok movie rec before you forget,
-            and finally answer <span className="text-warning font-bold">"what should we watch?"</span>
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg" className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90 text-lg px-8 py-6 animate-pulse-shadow`}>
-                Start Your Watchlist
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className={`${retroButtonClass} text-lg px-8 py-6`}>
-                I Already Have One
-              </Button>
-            </Link>
-          </div>
-
-          {/* Social proof mini */}
-          <p className="mt-8 text-sm text-muted-foreground">
-            Free forever. No credit card needed. No BS.
-          </p>
         </div>
-      </section>
 
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-16 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-headline font-bold text-center mb-4">
-            Why MovieNight?
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
-            Built for people who are tired of screenshotting TikToks and texting "we should watch this" into the void.
-          </p>
+        {/* Tagline */}
+        <p className="text-xl md:text-2xl text-muted-foreground text-center mb-2 max-w-md">
+          Plan movie nights with friends.
+        </p>
+        <p className="text-base text-muted-foreground text-center mb-10 max-w-sm">
+          Create shared watchlists and finally answer "what should we watch?"
+        </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Feature 1 */}
-            <div className="bg-card border-[3px] border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] hover:shadow-[8px_8px_0px_0px_#000] hover:-translate-y-1 transition-all">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4 border-[2px] border-black animate-wiggle">
-                <List className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <h3 className="font-headline font-bold text-xl mb-2">Unlimited Lists</h3>
-              <p className="text-muted-foreground">
-                Horror movies for October. Rom-coms for heartbreak. "Movies my ex would hate." Go wild.
-              </p>
-            </div>
-
-            {/* Feature 2 - Highlighted */}
-            <div className="bg-card border-[3px] border-warning rounded-xl p-6 shadow-[6px_6px_0px_0px_hsl(var(--warning))] hover:shadow-[8px_8px_0px_0px_hsl(var(--warning))] hover:-translate-y-1 transition-all">
-              <div className="w-12 h-12 bg-warning rounded-lg flex items-center justify-center mb-4 border-[2px] border-black animate-bounce-subtle">
-                <Users className="h-6 w-6 text-warning-foreground" />
-              </div>
-              <h3 className="font-headline font-bold text-xl mb-2">Collaborative Lists</h3>
-              <p className="text-muted-foreground">
-                Invite friends to add and manage movies together. Plan movie nights as a group.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="bg-card border-[3px] border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] hover:shadow-[8px_8px_0px_0px_#000] hover:-translate-y-1 transition-all">
-              <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-4 border-[2px] border-black animate-wiggle">
-                <Tv className="h-6 w-6 text-accent-foreground" />
-              </div>
-              <h3 className="font-headline font-bold text-xl mb-2">Movies & TV Shows</h3>
-              <p className="text-muted-foreground">
-                Search millions of titles with ratings, cast info, and posters. Powered by TMDB.
-              </p>
-            </div>
-          </div>
+        {/* CTA Buttons - stacked for mobile feel */}
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <Link href="/signup" className="w-full">
+            <Button size="lg" className={`${retroButtonClass} w-full text-lg py-6 bg-primary text-primary-foreground hover:bg-primary/90`}>
+              Get Started
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+          <Link href="/login" className="w-full">
+            <Button size="lg" variant="outline" className={`${retroButtonClass} w-full text-lg py-6`}>
+              I Have an Account
+            </Button>
+          </Link>
         </div>
-      </section>
 
-      {/* How It Works */}
-      <section className="container mx-auto px-4 py-16 relative z-10">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-secondary border-[3px] border-black rounded-xl p-8 shadow-[8px_8px_0px_0px_#000]">
-            <div className="flex items-center gap-2 mb-6">
-              <Sparkles className="h-6 w-6 text-warning animate-wiggle" />
-              <h3 className="font-headline font-bold text-xl">Dead simple. As it should be.</h3>
-            </div>
-            <ol className="space-y-4 text-lg">
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-warning text-warning-foreground rounded-full flex items-center justify-center font-bold border-[2px] border-black">
-                  1
-                </span>
-                <span><strong>Sign up</strong> in 10 seconds</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold border-[2px] border-black">
-                  2
-                </span>
-                <span><strong>Create a list</strong> and add movies or TV shows</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-accent text-accent-foreground rounded-full flex items-center justify-center font-bold border-[2px] border-black">
-                  3
-                </span>
-                <span><strong>Invite friends</strong> to collaborate on your list</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold border-[2px] border-black">
-                  4
-                </span>
-                <span><strong>Pick something</strong> and enjoy movie night!</span>
-              </li>
-            </ol>
-          </div>
-        </div>
-      </section>
+        {/* Small tagline */}
+        <p className="mt-8 text-sm text-muted-foreground">
+          Free forever. No credit card needed.
+        </p>
+      </div>
 
-      {/* CTA Section */}
-      <section className="container mx-auto px-4 py-16 mb-8 relative z-10">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="bg-warning/10 border-[3px] border-warning rounded-xl p-8 shadow-[6px_6px_0px_0px_hsl(var(--warning))]">
-            <Popcorn className="h-10 w-10 text-warning mx-auto mb-4 animate-bounce-subtle" />
-            <h2 className="text-3xl md:text-4xl font-headline font-bold mb-4">
-              Ready for your next movie night?
-            </h2>
-            <p className="text-lg text-muted-foreground mb-6">
-              Stop losing movie recs to the algorithm.
-              Start planning watch parties with friends.
-            </p>
-            <Link href="/signup">
-              <Button size="lg" className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90 text-lg px-8 py-6`}>
-                Create Free Account
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t-[3px] border-black py-8 relative z-10">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="bg-primary p-1 rounded border-[2px] border-black">
-                <Film className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-headline font-bold">MovieNight</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Made with <span className="text-warning">♥</span> for movie lovers everywhere
-            </p>
-          </div>
-        </div>
-      </footer>
+      {/* Decorative popcorn at bottom */}
+      <div className="pb-8 flex justify-center">
+        <Popcorn className="h-8 w-8 text-warning/50 animate-bounce-subtle" />
+      </div>
     </main>
   );
 }

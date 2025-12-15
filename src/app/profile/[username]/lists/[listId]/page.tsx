@@ -120,7 +120,7 @@ export default function PublicListPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen">
         <Film className="h-12 w-12 text-primary animate-spin" />
       </div>
     );
@@ -128,7 +128,7 @@ export default function PublicListPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-background font-body text-foreground">
+      <main className="min-h-screen font-body text-foreground">
         <div className="container mx-auto p-4 md:p-8">
           <div className="flex flex-col items-center justify-center min-h-[50vh]">
             <Lock className="h-16 w-16 text-muted-foreground mb-4" />
@@ -164,7 +164,7 @@ export default function PublicListPage() {
   );
 
   return (
-    <main className="min-h-screen bg-background font-body text-foreground">
+    <main className="min-h-screen font-body text-foreground">
       <div className="container mx-auto p-4 md:p-8">
         <header className="mb-8">
           <div className="w-full flex justify-between items-center mb-6">
