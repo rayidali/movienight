@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PublicMovieGrid } from '@/components/public-movie-grid';
 import { PublicMovieListItem } from '@/components/public-movie-list-item';
 import { PublicMovieDetailsModal } from '@/components/public-movie-details-modal';
+import { GridViewHint } from '@/components/grid-view-hint';
 import {
   getUserByUsername,
   getPublicListMovies,
@@ -301,6 +302,9 @@ export default function PublicListPage() {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
         />
+
+        {/* One-time hint for grid view on mobile */}
+        {viewMode === 'grid' && <GridViewHint />}
       </div>
     </main>
   );

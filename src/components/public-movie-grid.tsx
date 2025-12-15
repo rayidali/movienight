@@ -93,13 +93,6 @@ export function PublicMovieGrid({ movie, onOpenDetails }: PublicMovieGridProps) 
           </div>
         </div>
 
-        {/* Mobile tap hint */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none md:hidden">
-          <div className="bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 opacity-0 group-active:opacity-100 transition-opacity">
-            <Maximize2 className="h-3 w-3" />
-            <span>Tap for details</span>
-          </div>
-        </div>
       </div>
 
       {/* Title and year below poster */}

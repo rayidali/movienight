@@ -6,6 +6,7 @@ import { MovieCard } from './movie-card';
 import { MovieCardGrid } from './movie-card-grid';
 import { MovieCardList } from './movie-card-list';
 import { MovieDetailsModal } from './movie-details-modal';
+import { GridViewHint } from './grid-view-hint';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Film, Grid3X3, List, LayoutGrid } from 'lucide-react';
@@ -226,6 +227,9 @@ export function MovieList({ initialMovies, isLoading, listId, listOwnerId, canEd
         listOwnerId={listOwnerId}
         canEdit={canEdit}
       />
+
+      {/* One-time hint for grid view on mobile */}
+      {viewMode === 'grid' && <GridViewHint />}
     </div>
   );
 }
