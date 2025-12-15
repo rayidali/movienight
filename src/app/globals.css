@@ -40,7 +40,7 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
     --dot-color: 0 0% 0%;
-    --dot-opacity: 0.25;
+    --dot-opacity: 0.12;
   }
   .dark {
     --background: 20 14.3% 4.1%;
@@ -78,7 +78,7 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
     --dot-color: 0 0% 100%;
-    --dot-opacity: 0.15;
+    --dot-opacity: 0.08;
   }
 }
 
@@ -182,10 +182,10 @@
 @layer utilities {
   .bg-dot-pattern {
     background-image: radial-gradient(
-      hsl(var(--dot-color) / var(--dot-opacity)) 1.5px,
-      transparent 1.5px
+      hsl(var(--dot-color) / var(--dot-opacity)) 1px,
+      transparent 1px
     );
-    background-size: 20px 20px;
+    background-size: 12px 12px;
   }
 }
 
@@ -193,20 +193,20 @@
 .bg-background-dots {
   background-color: hsl(var(--background));
   background-image: radial-gradient(
-    hsl(var(--dot-color) / var(--dot-opacity)) 1.5px,
-    transparent 1.5px
+    hsl(var(--dot-color) / var(--dot-opacity)) 1px,
+    transparent 1px
   );
-  background-size: 20px 20px;
+  background-size: 12px 12px;
 }
 
 /* Apply to html/body for consistent background */
 html {
   background-color: hsl(var(--background));
   background-image: radial-gradient(
-    hsl(var(--dot-color) / var(--dot-opacity)) 1.5px,
-    transparent 1.5px
+    hsl(var(--dot-color) / var(--dot-opacity)) 1px,
+    transparent 1px
   );
-  background-size: 20px 20px;
+  background-size: 12px 12px;
   min-height: 100%;
 }
 

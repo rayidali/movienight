@@ -12,23 +12,20 @@ A social movie watchlist app for friends to curate and share movies together. Cr
 
 ### ✅ Currently Implemented
 
-- **Landing Page**: Neo-brutalist welcome screen with edgy copy and vibrant orange/blue color scheme
+- **Landing Page**: Neo-brutalist welcome screen with vibrant orange/blue color scheme
 - **User Authentication**: Email/password signup and login with Firebase Auth
 - **Profile Pictures**: Upload custom avatars stored on Cloudflare R2
 - **Multiple Watchlists**: Create unlimited lists with custom names
+- **Collaborative Lists**: Invite friends to add/manage movies together (up to 3 members per list)
+- **Social Features**: Follow users, view their public lists, activity feed
 - **Movie & TV Show Search**: Search millions of titles via TMDB API with ratings, cast info, and posters
 - **Social Links**: Attach TikTok/Instagram/YouTube links to movies
+- **Enhanced Video Embeds**: Auto-play TikTok/Reels in expanded view
 - **Watch Status**: Toggle between "To Watch" and "Watched" states
 - **Movie Details Modal**: Expandable cards showing full details, cast, and embedded social videos
 - **Dark Mode**: System-aware theme toggle with light mode as default
 - **Dot Pattern Background**: Subtle depth effect that adapts to light/dark modes
 - **Responsive Design**: Mobile-first neo-brutalist UI with chunky borders and hard shadows
-
-### 🚧 Coming Soon
-
-- **Collaborative Lists**: Invite friends to add/manage movies together (up to 3 members per list)
-- **Social Features**: Follow users, view their public lists, activity feed
-- **Enhanced Video Embeds**: Auto-play TikTok/Reels in expanded view
 
 ## Tech Stack
 

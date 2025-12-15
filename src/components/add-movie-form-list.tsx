@@ -337,7 +337,7 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
               <Button variant="ghost" onClick={() => { setSelectedMovie(null); setSocialLink(''); }} className="font-bold">
                 Cancel
               </Button>
-              <Button type="submit" className={retroButtonClass} disabled={isAdding}>
+              <Button type="submit" className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`} disabled={isAdding}>
                 {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
                 Add to List
               </Button>

@@ -207,7 +207,7 @@ export function AddMovieForm() {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setSelectedMovie(null)} className="font-bold">Cancel</Button>
-              <Button type="submit" className={retroButtonClass} disabled={isAdding}>
+              <Button type="submit" className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`} disabled={isAdding}>
                 {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
                 Add to List
               </Button>

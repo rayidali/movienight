@@ -116,7 +116,7 @@ export default function SignUpPage() {
                 className={retroInputClass}
               />
             </div>
-            <Button type="submit" className={`w-full ${retroButtonClass}`} disabled={isLoading}>
+            <Button type="submit" className={`w-full ${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`} disabled={isLoading}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Create Account'}
             </Button>
           </form>
