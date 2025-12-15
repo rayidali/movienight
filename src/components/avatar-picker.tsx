@@ -3,10 +3,10 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { Camera, Check, Loader2, Upload, X } from 'lucide-react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import { DEFAULT_AVATARS } from '@/lib/avatars';
-import { useUser, useStorage } from '@/firebase';
+import { useUser } from '@/firebase';
+import { uploadAvatar } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,7 +35,6 @@ export function AvatarPicker({
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
-  const storage = useStorage();
   const { toast } = useToast();
 
   const handleSelectDefault = (url: string) => {
@@ -69,16 +68,38 @@ export function AvatarPicker({
     setIsUploading(true);
 
     try {
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
-
-      setSelectedUrl(downloadUrl);
-      toast({
-        title: 'Image uploaded',
-        description: 'Click Save to use this as your profile picture.',
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data:image/xxx;base64, prefix
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
+
+      // Upload via server action
+      const result = await uploadAvatar(user.uid, base64, file.name, file.type);
+
+      if (result.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Upload failed',
+          description: result.error,
+        });
+        return;
+      }
+
+      if (result.url) {
+        setSelectedUrl(result.url);
+        toast({
+          title: 'Image uploaded',
+          description: 'Click Save to use this as your profile picture.',
+        });
+      }
     } catch (error) {
       console.error('Failed to upload image:', error);
       toast({
@@ -134,7 +155,7 @@ export function AvatarPicker({
           {/* Current selection preview */}
           <div className="flex justify-center">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full border-[3px] border-black shadow-[4px_4px_0px_0px_#000] overflow-hidden bg-secondary">
+              <div className="w-32 h-32 rounded-full border-[4px] border-black shadow-[6px_6px_0px_0px_#000] overflow-hidden bg-secondary">
                 {selectedUrl ? (
                   <Image
                     src={selectedUrl}
@@ -190,6 +211,11 @@ export function AvatarPicker({
           {/* Custom upload */}
           <div>
             <h3 className="text-sm font-medium mb-3">Or Upload Your Own</h3>
+            {/*
+              Mobile-friendly file input:
+              - accept="image/*" allows all image types
+              - capture attribute would force camera, but we omit it to show photo library option
+            */}
             <input
               ref={fileInputRef}
               type="file"
@@ -198,11 +224,14 @@ export function AvatarPicker({
               className="hidden"
               id="avatar-upload"
             />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="w-full border-[2px] border-black"
+            <label
+              htmlFor="avatar-upload"
+              className={`
+                flex items-center justify-center w-full py-3 px-4
+                border-[2px] border-black rounded-lg cursor-pointer
+                bg-background hover:bg-secondary transition-colors
+                ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
             >
               {isUploading ? (
                 <>
@@ -212,11 +241,11 @@ export function AvatarPicker({
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload Image
+                  Choose from Camera Roll
                 </>
               )}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
+            </label>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
               JPG, PNG or GIF. Max 2MB.
             </p>
           </div>

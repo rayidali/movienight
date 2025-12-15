@@ -1960,6 +1960,102 @@ export async function getCollaborativeLists(userId: string) {
 }
 
 /**
+ * Upload an avatar image to Cloudflare R2.
+ * Receives base64 image data and returns the download URL.
+ * Uses a consistent filename per user to overwrite previous uploads.
+ *
+ * Required environment variables:
+ * - R2_ACCESS_KEY_ID: R2 access key
+ * - R2_SECRET_ACCESS_KEY: R2 secret key
+ * - R2_ENDPOINT: R2 endpoint (e.g., https://<account_id>.r2.cloudflarestorage.com)
+ * - R2_BUCKET_NAME: R2 bucket name
+ * - R2_PUBLIC_BASE_URL: Public URL for the bucket (e.g., https://pub-xxx.r2.dev)
+ */
+export async function uploadAvatar(
+  userId: string,
+  base64Data: string,
+  fileName: string,
+  mimeType: string
+): Promise<{ url?: string; error?: string }> {
+  try {
+    // Validate inputs
+    if (!userId || !base64Data) {
+      return { error: 'Missing required fields.' };
+    }
+
+    // Validate mime type - only allow specific image types
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(mimeType)) {
+      return { error: 'Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.' };
+    }
+
+    // Convert base64 to buffer
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Validate file size (max 2MB)
+    if (buffer.length > 2 * 1024 * 1024) {
+      return { error: 'File too large. Maximum size is 2MB.' };
+    }
+
+    // Check R2 configuration
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const endpoint = process.env.R2_ENDPOINT;
+    const bucketName = process.env.R2_BUCKET_NAME;
+    const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
+
+    if (!accessKeyId || !secretAccessKey || !endpoint || !bucketName || !publicBaseUrl) {
+      console.error('[uploadAvatar] R2 not configured');
+      return { error: 'Image upload is not configured. Please contact support.' };
+    }
+
+    // Import S3 client
+    const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+
+    // Create S3 client for R2
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+
+    // Get file extension from mime type
+    const extMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+    };
+    const ext = extMap[mimeType] || 'jpg';
+
+    // Use consistent filename per user (overwrites previous avatar)
+    const fileKey = `avatars/${userId}/avatar.${ext}`;
+
+    // Upload to R2
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+        Body: buffer,
+        ContentType: mimeType,
+        CacheControl: 'public, max-age=31536000',
+      })
+    );
+
+    // Return the public URL with cache-busting timestamp
+    const imageUrl = `${publicBaseUrl}/${fileKey}?v=${Date.now()}`;
+
+    return { url: imageUrl };
+  } catch (error) {
+    console.error('[uploadAvatar] Failed:', error);
+    return { error: 'Failed to upload image. Please try again.' };
+  }
+}
+
+/**
  * Update user's profile photo URL.
  */
 export async function updateProfilePhoto(userId: string, photoURL: string) {
