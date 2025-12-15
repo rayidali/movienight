@@ -1,13 +1,30 @@
 'use client';
 
 import Image from 'next/image';
-import { Eye, EyeOff, Star } from 'lucide-react';
+import { Eye, EyeOff, Star, Maximize2, Instagram, Youtube } from 'lucide-react';
 import type { Movie } from '@/lib/types';
+import { parseVideoUrl } from '@/lib/video-utils';
+import { TiktokIcon } from './icons';
 
 type PublicMovieGridProps = {
   movie: Movie;
   onOpenDetails?: (movie: Movie) => void;
 };
+
+function getProviderIcon(url: string | undefined) {
+  const parsed = parseVideoUrl(url);
+  if (!parsed) return null;
+  switch (parsed.provider) {
+    case 'tiktok':
+      return TiktokIcon;
+    case 'instagram':
+      return Instagram;
+    case 'youtube':
+      return Youtube;
+    default:
+      return null;
+  }
+}
 
 export function PublicMovieGrid({ movie, onOpenDetails }: PublicMovieGridProps) {
   const handleClick = () => {
@@ -15,6 +32,10 @@ export function PublicMovieGrid({ movie, onOpenDetails }: PublicMovieGridProps) 
       onOpenDetails(movie);
     }
   };
+
+  // Check for social link
+  const SocialIcon = getProviderIcon(movie.socialLink);
+  const hasSocialLink = !!SocialIcon;
 
   return (
     <div className="group relative cursor-pointer" onClick={handleClick}>
@@ -28,20 +49,33 @@ export function PublicMovieGrid({ movie, onOpenDetails }: PublicMovieGridProps) 
           sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 20vw"
         />
 
-        {/* Rating badge (if available) */}
-        {movie.rating && (
-          <div className="absolute top-1 left-1 bg-black/80 text-white px-1.5 py-0.5 rounded text-xs font-bold flex items-center gap-0.5">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            {movie.rating.toFixed(1)}
-          </div>
-        )}
+        {/* Top row: Rating + Social Icon */}
+        <div className="absolute top-1 left-1 right-1 flex justify-between items-start">
+          {/* Rating badge */}
+          {movie.rating ? (
+            <div className="bg-black/80 text-white px-1.5 py-0.5 rounded text-xs font-bold flex items-center gap-0.5">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              {movie.rating.toFixed(1)}
+            </div>
+          ) : (
+            <div />
+          )}
 
-        {/* Status indicator */}
+          {/* Social link badge */}
+          {hasSocialLink && (
+            <div className="bg-black/80 text-white p-1 rounded" title="Has video link">
+              <SocialIcon className="h-3 w-3" />
+            </div>
+          )}
+        </div>
+
+        {/* Bottom right: Status indicator */}
         <div className="absolute bottom-1 right-1">
           <div
             className={`w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${
               movie.status === 'Watched' ? 'bg-green-500' : 'bg-yellow-500'
             }`}
+            title={movie.status}
           >
             {movie.status === 'Watched' ? (
               <Eye className="h-3 w-3 text-white" />
@@ -53,15 +87,24 @@ export function PublicMovieGrid({ movie, onOpenDetails }: PublicMovieGridProps) 
 
         {/* Hover overlay - desktop only */}
         <div className="absolute inset-0 bg-black/60 opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <span className="text-white text-xs font-bold px-2 py-1 bg-black/50 rounded">
-            View Details
-          </span>
+          <div className="flex items-center gap-1 text-white text-xs">
+            <Maximize2 className="h-4 w-4" />
+            <span className="font-medium">View Details</span>
+          </div>
+        </div>
+
+        {/* Mobile tap hint */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none md:hidden">
+          <div className="bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 opacity-0 group-active:opacity-100 transition-opacity">
+            <Maximize2 className="h-3 w-3" />
+            <span>Tap for details</span>
+          </div>
         </div>
       </div>
 
-      {/* Title below poster */}
-      <div className="mt-1 px-0.5">
-        <p className="text-xs font-medium truncate" title={movie.title}>
+      {/* Title and year below poster */}
+      <div className="mt-1.5 px-0.5">
+        <p className="text-xs font-medium truncate leading-tight" title={movie.title}>
           {movie.title}
         </p>
         <p className="text-xs text-muted-foreground">{movie.year}</p>
