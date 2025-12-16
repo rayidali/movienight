@@ -59,7 +59,7 @@ export default function LandingPage() {
         {/* CTA Buttons - stacked for mobile feel */}
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <Link href="/signup" className="w-full">
-            <Button size="lg" className={`${retroButtonClass} w-full text-lg py-6 bg-primary text-primary-foreground hover:bg-primary/90`}>
+            <Button size="lg" className={`${retroButtonClass} w-full text-lg py-6 bg-warning text-warning-foreground hover:bg-warning/90`}>
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

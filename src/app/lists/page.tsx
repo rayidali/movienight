@@ -316,7 +316,7 @@ export default function ListsPage() {
             <h2 className="text-2xl font-headline font-bold">My Lists</h2>
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className={retroButtonClass}>
+                <Button className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`}>
                   <Plus className="h-5 w-5 mr-2" />
                   New List
                 </Button>
@@ -339,7 +339,7 @@ export default function ListsPage() {
                   <Button
                     onClick={handleCreateList}
                     disabled={!newListName.trim() || isSubmitting}
-                    className={retroButtonClass}
+                    className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`}
                   >
                     {isSubmitting ? <Loader2 className="animate-spin" /> : 'Create List'}
                   </Button>
@@ -442,7 +442,7 @@ export default function ListsPage() {
                 <List className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="font-headline text-xl font-bold mb-2">No lists yet</h3>
                 <p className="text-muted-foreground mb-4">Create your first watchlist to get started.</p>
-                <Button onClick={() => setIsCreateOpen(true)} className={retroButtonClass}>
+                <Button onClick={() => setIsCreateOpen(true)} className={`${retroButtonClass} bg-warning text-warning-foreground hover:bg-warning/90`}>
                   <Plus className="h-5 w-5 mr-2" />
                   Create List
                 </Button>
