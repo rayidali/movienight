@@ -64,6 +64,7 @@ function formatTMDBSearchResult(result: TMDBSearchResult): SearchResult {
       ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
       : 'https://picsum.photos/seed/placeholder/500/750', // Fallback
     posterHint: 'movie poster',
+    mediaType: 'movie',
   };
 }
 

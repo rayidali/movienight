@@ -12,7 +12,6 @@ import { addMovieToList } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 
@@ -113,6 +112,28 @@ async function searchTVShows(query: string): Promise<SearchResult[]> {
   return [];
 }
 
+async function searchAll(query: string): Promise<SearchResult[]> {
+  if (!query) return [];
+
+  // Search both movies and TV shows in parallel
+  const [movies, tvShows] = await Promise.all([
+    searchMovies(query),
+    searchTVShows(query),
+  ]);
+
+  // Interleave results to show both types mixed together
+  const combined: SearchResult[] = [];
+  const maxLength = Math.max(movies.length, tvShows.length);
+
+  for (let i = 0; i < maxLength; i++) {
+    if (i < movies.length) combined.push(movies[i]);
+    if (i < tvShows.length) combined.push(tvShows[i]);
+  }
+
+  // Limit to 12 results total
+  return combined.slice(0, 12);
+}
+
 const retroInputClass =
   "border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_#000] focus:shadow-[2px_2px_0px_0px_#000] focus:translate-x-0.5 focus:translate-y-0.5 transition-all duration-200";
 const retroButtonClass =
@@ -131,7 +152,6 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
   const [socialLink, setSocialLink] = useState('');
-  const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
 
   const [isSearching, startSearchTransition] = useTransition();
   const [isAdding, startAddingTransition] = useTransition();
@@ -149,15 +169,13 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
 
     const searchTimer = setTimeout(() => {
       startSearchTransition(async () => {
-        const searchResults = mediaType === 'movie'
-          ? await searchMovies(query)
-          : await searchTVShows(query);
+        const searchResults = await searchAll(query);
         setResults(searchResults);
       });
     }, 300);
 
     return () => clearTimeout(searchTimer);
-  }, [query, selectedMovie, mediaType]);
+  }, [query, selectedMovie]);
 
   const handleSelectMovie = (movie: SearchResult) => {
     setSelectedMovie(movie);
@@ -210,12 +228,6 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
     }
   };
 
-  const handleMediaTypeChange = (value: string) => {
-    setMediaType(value as 'movie' | 'tv');
-    setResults([]);
-    setQuery('');
-  };
-
   return (
     <Card className="w-full max-w-2xl bg-secondary rounded-xl border-[3px] border-black shadow-[8px_8px_0px_0px_#000]">
       <CardHeader>
@@ -224,23 +236,11 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
       <CardContent>
         {!selectedMovie ? (
           <div className="space-y-4">
-            <Tabs value={mediaType} onValueChange={handleMediaTypeChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 border-[2px] border-black">
-                <TabsTrigger value="movie" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Film className="h-4 w-4" />
-                  Movies
-                </TabsTrigger>
-                <TabsTrigger value="tv" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Tv className="h-4 w-4" />
-                  TV Shows
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
             <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
               <div className="relative w-full">
                 <Input
                   type="text"
-                  placeholder={mediaType === 'movie' ? "Search for a movie..." : "Search for a TV show..."}
+                  placeholder="Search for movies or TV shows..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className={`${retroInputClass} pr-10`}
@@ -259,7 +259,7 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
               <div className="space-y-2 max-h-60 overflow-y-auto p-2 bg-background rounded-lg border-[3px] border-black">
                 {results.map((movie) => (
                   <button
-                    key={movie.id}
+                    key={`${movie.mediaType}-${movie.id}`}
                     onClick={() => handleSelectMovie(movie)}
                     className="w-full text-left p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-4"
                   >
@@ -271,9 +271,22 @@ export function AddMovieFormForList({ listId, listOwnerId }: AddMovieFormForList
                       className="rounded-sm"
                       data-ai-hint={movie.posterHint}
                     />
-                    <div>
+                    <div className="flex-grow">
                       <p className="font-bold">{movie.title}</p>
                       <p className="text-sm text-muted-foreground">{movie.year}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full border border-black">
+                      {movie.mediaType === 'movie' ? (
+                        <>
+                          <Film className="h-3 w-3" />
+                          <span>Movie</span>
+                        </>
+                      ) : (
+                        <>
+                          <Tv className="h-3 w-3" />
+                          <span>TV</span>
+                        </>
+                      )}
                     </div>
                   </button>
                 ))}

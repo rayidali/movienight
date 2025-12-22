@@ -13,7 +13,6 @@ import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -133,6 +132,28 @@ async function searchTVShows(query: string): Promise<SearchResult[]> {
   return [];
 }
 
+async function searchAll(query: string): Promise<SearchResult[]> {
+  if (!query) return [];
+
+  // Search both movies and TV shows in parallel
+  const [movies, tvShows] = await Promise.all([
+    searchMovies(query),
+    searchTVShows(query),
+  ]);
+
+  // Interleave results to show both types mixed together
+  const combined: SearchResult[] = [];
+  const maxLength = Math.max(movies.length, tvShows.length);
+
+  for (let i = 0; i < maxLength; i++) {
+    if (i < movies.length) combined.push(movies[i]);
+    if (i < tvShows.length) combined.push(tvShows[i]);
+  }
+
+  // Limit to 12 results total
+  return combined.slice(0, 12);
+}
+
 const retroInputClass = "border-[3px] border-border rounded-2xl shadow-[4px_4px_0px_0px_hsl(var(--border))] focus:shadow-[2px_2px_0px_0px_hsl(var(--border))] focus:translate-x-0.5 focus:translate-y-0.5 transition-all duration-200 bg-card";
 const retroButtonClass = "border-[3px] border-border rounded-full shadow-[4px_4px_0px_0px_hsl(var(--border))] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all duration-200";
 
@@ -148,7 +169,6 @@ export default function AddPage() {
   const [selectedListId, setSelectedListId] = useState<string>('');
   const [selectedListOwnerId, setSelectedListOwnerId] = useState<string>('');
   const [socialLink, setSocialLink] = useState('');
-  const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
   const [collaborativeLists, setCollaborativeLists] = useState<ListOption[]>([]);
   const [isLoadingCollab, setIsLoadingCollab] = useState(false);
 
@@ -238,15 +258,13 @@ export default function AddPage() {
 
     const searchTimer = setTimeout(() => {
       startSearchTransition(async () => {
-        const searchResults = mediaType === 'movie'
-          ? await searchMovies(query)
-          : await searchTVShows(query);
+        const searchResults = await searchAll(query);
         setResults(searchResults);
       });
     }, 300);
 
     return () => clearTimeout(searchTimer);
-  }, [query, selectedMovie, mediaType]);
+  }, [query, selectedMovie]);
 
   const handleSelectMovie = (movie: SearchResult) => {
     setSelectedMovie(movie);
@@ -297,12 +315,6 @@ export default function AddPage() {
       default:
         return null;
     }
-  };
-
-  const handleMediaTypeChange = (value: string) => {
-    setMediaType(value as 'movie' | 'tv');
-    setResults([]);
-    setQuery('');
   };
 
   if (isUserLoading || !user) {
@@ -400,31 +412,11 @@ export default function AddPage() {
           {!selectedMovie ? (
             <Card className="border-[3px] border-border rounded-2xl shadow-[8px_8px_0px_0px_hsl(var(--border))] bg-card">
               <CardContent className="p-6 space-y-4">
-                {/* Media Type Toggle */}
-                <Tabs value={mediaType} onValueChange={handleMediaTypeChange} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-background border-[3px] border-border rounded-full p-0 h-auto">
-                    <TabsTrigger
-                      value="movie"
-                      className="rounded-l-full flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                    >
-                      <Film className="h-4 w-4" />
-                      Movies
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="tv"
-                      className="rounded-r-full flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                    >
-                      <Tv className="h-4 w-4" />
-                      TV Shows
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
                 {/* Search Input */}
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder={mediaType === 'movie' ? "Search for a movie..." : "Search for a TV show..."}
+                    placeholder="Search for movies or TV shows..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className={`${retroInputClass} pr-10 text-lg`}
@@ -444,7 +436,7 @@ export default function AddPage() {
                   <div className="space-y-2 max-h-80 overflow-y-auto p-2 bg-background rounded-2xl border-[3px] border-border">
                     {results.map((movie) => (
                       <button
-                        key={movie.id}
+                        key={`${movie.mediaType}-${movie.id}`}
                         onClick={() => handleSelectMovie(movie)}
                         className="w-full text-left p-3 rounded-xl hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-4 border-[2px] border-transparent hover:border-border"
                       >
@@ -456,9 +448,22 @@ export default function AddPage() {
                           className="rounded-lg border-[2px] border-border"
                           data-ai-hint={movie.posterHint}
                         />
-                        <div>
+                        <div className="flex-grow">
                           <p className="font-bold text-lg">{movie.title}</p>
                           <p className="text-sm text-muted-foreground">{movie.year}</p>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full border border-border">
+                          {movie.mediaType === 'movie' ? (
+                            <>
+                              <Film className="h-3 w-3" />
+                              <span>Movie</span>
+                            </>
+                          ) : (
+                            <>
+                              <Tv className="h-3 w-3" />
+                              <span>TV</span>
+                            </>
+                          )}
                         </div>
                       </button>
                     ))}
